@@ -11,11 +11,13 @@ CONFIG += c++11
 SOURCES += \
     main.C \
     phasorviewer.C \
-    ../../shared/src/Phasors.C
+    ../../shared/src/Phasors.C \
+    ../../shared/src/Wavelengths.C
 
 HEADERS += \
     phasorviewer.H \
-    ../../shared/include/Phasors.H
+    ../../shared/include/Phasors.H \
+    ../../shared/include/Wavelengths.H
 
 FORMS += \
     phasorviewer.ui

@@ -10,7 +10,7 @@ DataProcessorBaselineSim::DataProcessorBaselineSim
   dbeta=(beta1-beta0)/(n-1);  
 }
 
-PhasorSet &DataProcessorBaselineSim::makePhasorSet(float dd){
+Phasors &DataProcessorBaselineSim::makePhasors(float dd){
   if(dd<-1e30)
     dd=d;
   float arg;

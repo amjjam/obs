@@ -10,7 +10,7 @@ public:
   DataProcessorBaselineSim(std::string &name, int n, float L0, float L1,
 			   float A, float S, float d=0, long idum=1);
   virtual ~DataProcessorBaselineSim(){}
-  PhasorSet &makePhasorSet(float d=-1e31);
+  Phasors &makePhasors(float d=-1e31);
 private:
   std::string name;
   int n;
@@ -22,7 +22,7 @@ private:
   float beta0;
   float beta1;
   float dbeta;
-  PhasorSet phasors;
+  Phasors phasors;
   long idum;
 };
 

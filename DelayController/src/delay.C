@@ -35,6 +35,7 @@ void *senderdisplay(void *);
 std::string receiver_movements;
 std::string sender_display;
 int sender_display_T;
+std::string sender_delaylines;
 
 int nDelaylines=6;
 Delays<double> delays;
@@ -95,7 +96,8 @@ void parse_args(int argc, char *argv[]){
     }
     else if(strcmp(argv[i],"--sender-delaylines")==0){
       i++;
-      sener_delaylines
+      sender_delaylines=argv[i];
+    }
     else{
       std::cout << "unknown parameter: " << argv[i] << std::endl;
       exit(EXIT_FAILURE);
@@ -115,6 +117,6 @@ void *senderdisplay(void *dummy){
     std::cout << _delays << std::endl;
     usleep(sender_display_T*1000);    
   }
-
+  
   return nullptr;
 }

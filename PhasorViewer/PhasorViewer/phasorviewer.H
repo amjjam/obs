@@ -6,6 +6,7 @@
 
 #include <QUdpSocket>
 #include "../../shared/include/Phasors.H"
+#include "../../shared/include/Wavelengths.H"
 #include <qcustomplot.h>
 
 QT_BEGIN_NAMESPACE

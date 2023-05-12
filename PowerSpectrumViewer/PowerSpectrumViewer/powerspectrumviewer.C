@@ -31,16 +31,16 @@ void PowerSpectrumViewer::receive(){
       packet.resize(datagram.data().size());
       memcpy(packet._data(),datagram.data().data(),datagram.data().size());
       std::vector<PowerSpectrum> ps;
-      read(ps,packet);
+      packet >> ps;
       std::cout << "Received datagram" << std::endl;
 
       for(unsigned int i=0;i<ps.size();i++){
-        QVector<double> d(ps[i].d().size());
-        QVector<double> p(ps[i].p().size());
-        std::cout << ps[i].d().size() << " " << ps[i].p().size() << std::endl;
-        for(unsigned int j=0;j<ps[i].d().size();j++){
-            d[j]=ps[i].d()[j];
-            p[j]=ps[i].p()[j];
+        QVector<double> d(ps[i].delays().size());
+        QVector<double> p(ps[i].power().size());
+        std::cout << ps[i].delays().size() << " " << ps[i].power().size() << std::endl;
+        for(unsigned int j=0;j<ps[i].delays().size();j++){
+            d[j]=ps[i].delays()[j];
+            p[j]=ps[i].power()[j];
 //            std::cout << d[j] << " ";
         }
 //        std::cout << std::endl;

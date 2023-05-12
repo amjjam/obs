@@ -64,7 +64,7 @@ int main(int argc, char *argv[]){
     
     // Process frames
     for(unsigned int j=0;j<phasorsets.size();j++)
-      phasorsets[j]=sim[j].makePhasorSet();
+      phasorsets[j]=sim[j].makePhasors();
 
     packet.reset();
     packet << phasorsets;

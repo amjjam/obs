@@ -11,8 +11,7 @@ CONFIG += c++11 debug
 SOURCES += \
     main.C \
     powerspectrumviewer.C \
-    ../../shared/src/PowerSpectrum.C \
-    ../../shared/src/ReadWrite.C
+    ../../shared/src/PowerSpectrum.C
 
 HEADERS += \
     powerspectrumviewer.H
