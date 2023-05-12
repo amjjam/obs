@@ -28,7 +28,9 @@ PowerSpectrumViewer::~PowerSpectrumViewer()
 void PowerSpectrumViewer::receive(){
     while(socket->hasPendingDatagrams()){
       QNetworkDatagram datagram=socket->receiveDatagram();
+      packet.clear();
       packet.resize(datagram.data().size());
+      std::cout << "datagram size: " << datagram.data().size() << std::endl;
       memcpy(packet._data(),datagram.data().data(),datagram.data().size());
       std::vector<PowerSpectrum> ps;
       packet >> ps;
