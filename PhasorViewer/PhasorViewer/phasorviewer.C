@@ -84,5 +84,6 @@ void PhasorViewer::update_plots(PhasorSets &p){
       ui->plot->graph(2*i)->setData(w,v2);
       ui->plot->graph(2*i+1)->setData(w,phi);
     }
+  ui->plot->rescaleAxes();
   ui->plot->replot();
 }
