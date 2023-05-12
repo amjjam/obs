@@ -32,25 +32,28 @@
   ============================================================================*/
 
 #include <ctime>
+#include <queue>
+
+#include "../../shared/include/Delays.H"
 
 class DelaylineSimulator{
 public:
   DelaylineSimulator(int nDelaylines, int timedelay=5000000);
   DelaylineSimulator(Delays<double> initial, struct timespec t={0,0},
-		     int time_delay=5000000):timedelay(time_delay){};
+		     int time_delay=5000000);
   virtual ~DelaylineSimulator(){};
   void time(struct timespec &);
-  void movements(Delays<float>);
+  void movements(Delays<float> &);
   Delays<double> positions();
 private:
   Delays<double> p;
   long timedelay; // time-delay in nanoseconds (default is 5 ms)
-  struct timespect now;
+  struct timespec now;
   bool realtime;
   std::queue<std::pair<struct timespec,Delays<double> > > q;
 };
 
-inline operator>(struct timespec &, struct timespec &);
+inline bool operator>(struct timespec &, struct timespec &);
 
 
 #endif

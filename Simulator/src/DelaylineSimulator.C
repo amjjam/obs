@@ -1,12 +1,13 @@
-#include "../include/DelaylinSimulator.H"
+#include "../include/DelaylineSimulator.H"
 
 DelaylineSimulator::DelaylineSimulator(int nDelaylines, int timedelay):
-  p(nDelaylines),timedelay(timedelay),now(,{0,0}),realtime(true){}
+  p(nDelaylines),timedelay(timedelay),now({0,0}),realtime(true){}
 
-DelaylineSimulator::DelaylineSimulator(Delays<double initial, int timedelay):
-  p(initial),timedelay(timedelay),now({0,0}),realtime(true){}
+DelaylineSimulator::DelaylineSimulator(Delays<double> initial,
+				       struct timespec t, int timedelay):
+  p(initial),timedelay(timedelay),now(t),realtime(true){}
 
-void DelaylineSimulator::time(struct timespect &t){
+void DelaylineSimulator::time(struct timespec &t){
   now=t;
   realtime=false;
 }
@@ -34,7 +35,7 @@ Delays<double> DelaylineSimulator::positions(){
       break;
     if(q.front().first>now)
       break;
-    p=q.front.second();
+    p=q.front().second;
     q.pop();
   }
   return p;
