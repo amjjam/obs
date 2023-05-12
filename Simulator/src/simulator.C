@@ -73,7 +73,7 @@ std::vector<struct PhasorsSim2> phasorssims;
 
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
-  sem_init(&framesem,0,0);
+  sem_init(&framesem,0,1);
   
   DelaylineSimulator delaylinesimulator(nDelaylines,timedelay);
   amjComEndpointUDP sender("",sender_phasors);
@@ -88,10 +88,13 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
     }
 
+  int i=0;
   Delays<double> positions;
   for(;;){
     // Wait for timer trigger
     sem_wait(&framesem);
+    if(i%100==0)
+      std::cout << i/100 << std::endl;
     positions=delaylinesimulator.positions();
     
     // get atmosphere delays
@@ -102,6 +105,7 @@ int main(int argc, char *argv[]){
 					   positions[phasorssims[i].dlm]);
     
     sender.send(packet);
+    i++;
     
     // Wait for timer trigger - in the future alarm will post to the semaphore
     usleep(1000*frameinterval);
