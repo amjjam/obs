@@ -22,11 +22,12 @@ Help help({
     "  The time delay of the delay lines, in ms",
     "--receiver-delaylines <string>",
     "  A communicator for receiving delay line commands.",
-    "--sender-phasors <string> [<int>]",
-    "  A communicator for sending simulated phasors. Optionally followed by",
-    "  an integer. If the integer is not supplied it defaults to 0. If it is",
-    "  supplied it is the number of ms since the last send to wait until the",
-    "  next send.",
+    "--sender-phasors <string>",
+    "  A communicator for sending simulated phasors.",
+    "--sender-phasors2 <string> <int>",
+    "  A second communicator for sending simulated phasors, together with a",
+    "  time-interval in ms. A packet will only be sent via this communicator",
+    "  if the time-interval has elapsed since the most recent send",
     "--baseline name dl+ dl- nL L0 L1 A S seed",
     "  <string> name - name of the baseline",
     "  <int> dl+ dl- - the baseline delay with be delay(dl+)-delay(dl-)",
@@ -62,12 +63,16 @@ Help help({
 
 void parse_args(int argc, char *argv[]);
 void *receiverdelaylines(void *d);
+void send2(amjPacket &p, amjComEndpointUDP &s);
 
 int nDelaylines=6;
 int timedelay=5000000;
 int frameinterval=10;
 std::string receiver_delaylines;
 std::string sender_phasors;
+std::string sender_phasors2;
+int interval_phasors2;
+struct timespec last_phasors2;
 
 std::mutex m;
 sem_t framesem;
@@ -80,12 +85,6 @@ struct PhasorsSim2{
   PhasorsSim sim;
 };
 
-struct amjComEndpointUDP2{
-  struct timespec t;
-  int dt;
-  amjComEndpointUDP sender;
-};
-
 std::vector<struct PhasorsSim2> phasorssims;
 ExternalDelaySimulator externaldelaysimulator(nDelaylines);
 
@@ -96,6 +95,7 @@ int main(int argc, char *argv[]){
   
   DelaylineSimulator delaylinesimulator(nDelaylines,timedelay);
   amjComEndpointUDP sender("",sender_phasors);
+  amjComEndpointUDP sender2("",sender_phasors2);
   amjPacket packet;
   
   // Create a thread to receive delays
@@ -114,11 +114,10 @@ int main(int argc, char *argv[]){
     sem_wait(&framesem);
     if(i%100==0)
       std::cout << i/100 << std::endl;
+    m.lock();
     positions=delaylinesimulator.positions();
+    m.unlock();
     positions+=externaldelaysimulator.delays();
-    
-    // get atmosphere delays
-    // Call them external delays
     
     packet << (int)phasorssims.size();
     for(unsigned int i=0;i<phasorssims.size();i++)
@@ -126,6 +125,7 @@ int main(int argc, char *argv[]){
 					   positions[phasorssims[i].dlm]);
     
     sender.send(packet);
+    send2(packet,sender2);
     i++;
     
     // Wait for timer trigger - in the future alarm will post to the semaphore
@@ -156,6 +156,12 @@ void parse_args(int argc, char *argv[]){
     else if(strcmp(argv[i],"--sender-phasors")==0){
       i++;
       sender_phasors=argv[i];
+    }
+    else if(strcmp(argv[i],"--sender-phasors2")==0){
+      i++;
+      sender_phasors2=argv[i];
+      i++;
+      interval_phasors2=atoi(argv[i]);
     }
     else if(strcmp(argv[i],"--frameinterval")==0){
       i++;
@@ -211,9 +217,17 @@ void *receiverdelaylines(void *d){
   return nullptr;
 }
 
-
-void send(amjPacket &p){
-  
-  
-  
+void send2(amjPacket &p, amjComEndpointUDP &sender2){
+  if(sender_phasors2.size()>0){
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC,&now);
+    if(((double)now.tv_sec-(double)last_phasors2.tv_sec)*1e3
+       +((double)now.tv_nsec-(double)last_phasors2.tv_nsec)/1e6
+       >interval_phasors2){
+      sender2.send(p);
+      last_phasors2=now;
+    }
+  }
 }
+
+
