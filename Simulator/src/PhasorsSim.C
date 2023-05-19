@@ -1,5 +1,7 @@
 #include "../include/PhasorsSim.H"
 
+#include <cmath>
+
 float ran1(long *idum);
 float gasdev(long *idum);
 
@@ -11,11 +13,14 @@ PhasorsSim::PhasorsSim(const std::string &name, int nL, float L0, float L1,
 PhasorsSim::~PhasorsSim(){};
 
 Phasors &PhasorsSim::phasors(float d){
-  float arg;
+  float arg,dL,x,f;
   for(unsigned int i=0;i<L.size();i++){
     arg=2*M_PI*d/L[i];
-    P[i].real(A*cos(arg)+S*gasdev(&idum));
-    P[i].imag(A*sin(arg)+S*gasdev(&idum));
+    dL=i+1<L.size()?L[i+1]-L[i]:L[i]-L[i-1];
+    x=M_PI*d*dL/L[i]/L[i];
+    f=fabs(x)<1e-3?1:sin(x)/x;
+    P[i].real(A*f*cos(arg)+S*gasdev(&idum));
+    P[i].imag(A*f*sin(arg)+S*gasdev(&idum));
   }
   
   return P;
