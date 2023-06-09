@@ -12,7 +12,7 @@ PowerSpectrumViewer::PowerSpectrumViewer(QWidget *parent)
   socket=new QUdpSocket(this);
   socket->bind(QHostAddress::LocalHost,port);
   connect(socket,&QUdpSocket::readyRead,this,&PowerSpectrumViewer::receive);
-  std::cout << "started" << std::endl;
+  //std::cout << "started" << std::endl;
   ui->widget->addGraph();
   ui->widget->graph(0)->setPen(QPen(Qt::red));
   ui->widget->addGraph();
