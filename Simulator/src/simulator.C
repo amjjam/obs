@@ -1,13 +1,12 @@
-/* This is the simulator. It contains a simulated delay line and a
-   simulated camera. Delay line commands are input and simulated data
-   frames are output. The program consists of two threads. The main
-   thread is triggered by a timer at regular intervals.
-
-
-   Main thread
-   makes makes phasors or frames using delay in a global
-   variable. thread_receiverdelaylines receives delays and places them
-   in the global variables */
+/*
+  This is the simulator. It contains a simulated delay line and a
+  simulated camera. Delay line commands are input and simulated data
+  frames are output. The program consists of two threads. The main
+  thread is triggered by a timer at regular intervals to output frames
+  corresponding to the position of the delay lines at that time. The
+  second thread listens for delay line commands and updates the dela
+  line positions, including an appropriate time delay.
+*/
 
 #include "../../shared/include/Help.H"
 
@@ -28,15 +27,17 @@ Help help({
     "  A second communicator for sending simulated phasors, together with a",
     "  time-interval in ms. A packet will only be sent via this communicator",
     "  if the time-interval has elapsed since the most recent send",
-    "--baseline name dl+ dl- nL L0 L1 A S seed",
+    "--baseline name dl- dl+ nL L0 L1 A S seed",
     "  <string> name - name of the baseline",
-    "  <int> dl+ dl- - the baseline delay with be delay(dl+)-delay(dl-)",
+    "  <int> dl- dl+ - the baseline delay with be delay(dl+)-delay(dl-)",
+    "                  delay line numbers 1 to delaylines",
     "  where delay() is the total delay on a delayline, including atmosphere",
     "  <int> nL - number of wavelength channels",
     "  <float> L0, L1 - shorter and longe wavelength in micrometers",
     "  <float> A - amplitude of phasors",
     "  <float> S - noise on phasors",
     "  <int> seed - random number seed",
+    "  the first delay line is numbered 1",
     "--frameinterval <int>",
     "  Number of milliseconds between frames",
     "--externaldelaymodel <int> <string> <other parameters>",
@@ -80,8 +81,8 @@ sem_t framesem;
 //std::string sender_frames;
 
 struct PhasorsSim2{
-  int dlp;
   int dlm;
+  int dlp;
   PhasorsSim sim;
 };
 
@@ -118,7 +119,10 @@ int main(int argc, char *argv[]){
     positions=delaylinesimulator.positions();
     m.unlock();
     positions+=externaldelaysimulator.delays();
+
+    std::cout << positions << std::endl;
     
+    packet.clear();
     packet << (int)phasorssims.size();
     for(unsigned int i=0;i<phasorssims.size();i++)
       packet << phasorssims[i].sim.phasors(positions[phasorssims[i].dlp]-
@@ -168,7 +172,7 @@ void parse_args(int argc, char *argv[]){
       frameinterval=atoi(argv[i]);
     }
     else if(strcmp(argv[i],"--baseline")==0){
-      phasorssims.push_back({atoi(argv[i+2]),atoi(argv[i+3]),
+      phasorssims.push_back({atoi(argv[i+2])-1,atoi(argv[i+3])-1,
 	    PhasorsSim(argv[i+1],atoi(argv[i+4]),atof(argv[i+5]),
 		       atof(argv[i+6]),atof(argv[i+7]),atof(argv[i+8]),
 		       atoi(argv[i+9]))});
@@ -177,18 +181,21 @@ void parse_args(int argc, char *argv[]){
     else if(strcmp(argv[i],"--externaldelaymodel")==0){
       int index,function;
       i++;
-      index=atoi(argv[i]);
+      index=atoi(argv[i])-1;
       i++;
       if(strcmp(argv[i],"sin")==0)
 	function=EXTERNALDELAYSIMULATOR_SIN;
       else if(strcmp(argv[i],"cos")==0)
 	function=EXTERNALDELAYSIMULATOR_COS;
+      else if(strcmp(argv[i],"square")==0)
+	function=EXTERNALDELAYSIMULATOR_SQUARE;
       else{
 	std::cout << "Simulator: unrecognized external delay model: "
 		  << argv[i] << std::endl;
 	exit(EXIT_FAILURE);
       }
       std::vector<double> params;
+      i++;
       params.push_back(atof(argv[i]));
       i++;
       params.push_back(atof(argv[i]));
@@ -208,6 +215,7 @@ void *receiverdelaylines(void *d){
   Delays<float> movements;
   DelaylineSimulator *delaylinesimulator=(DelaylineSimulator*)d;
   for(;;){
+    packet.clear();
     r.receive(packet);
     packet >> movements;
     m.lock();

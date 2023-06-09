@@ -30,6 +30,8 @@ Delays<double> &ExternalDelaySimulator::delays(const struct timespec &t){
       _delays[i]=params[i][0]*sin(2*M_PI*T/params[i][1]);
     else if(_function[i]==EXTERNALDELAYSIMULATOR_COS)
       _delays[i]=params[i][0]*cos(2*M_PI*T/params[i][1]);
+    else if(_function[i]==EXTERNALDELAYSIMULATOR_SQUARE)
+      _delays[i]=params[i][0]*(((int)(2*T/params[i][1])%2)*2-1);
     else{
       std::cout << "ExternalDelaySimulator: unrecognized function: "
 		<< _function[i] << std::endl;
