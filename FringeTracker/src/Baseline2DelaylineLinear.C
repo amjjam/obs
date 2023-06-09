@@ -12,7 +12,7 @@ Baseline2DelaylineLinear::Baseline2DelaylineLinear(int nB, int nD,
 Delays<float> Baseline2DelaylineLinear::delaylineMovements(){
   double sum=0;
   for(unsigned int i=0;i<D.size();i++)
-    D[i]=0;
+    D[index[0]]=0;
   for(unsigned int i=0;i<B.size();i++){
     D[index[i+1]]=D[index[i]]+B[i];
     sum+=B[i];

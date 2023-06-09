@@ -16,10 +16,10 @@ public:
   FringeTrackerStateMachineConfig(int state=STATE_STOP, float foundSNR=6,
 				  float lostSNR=3, int holdSearch=10,
 				  int holdFound=3, int holdLost=10,
-				  float searchAMin=3000,
-				  float searchAMax=5000000,
-				  float step=3000, float factor=1.5,
-				  float maxGD=2000, float gain=0.03);
+				  float searchAMin=3,
+				  float searchAMax=5000,
+				  float step=3, float factor=1.5,
+				  float maxGD=2, float gain=0.01);
   ~FringeTrackerStateMachineConfig(){};
   int state() const {return _state;};
   void state(int state_){_state=state_;};
@@ -89,7 +89,7 @@ private:
   int searchStep; // size and direction of step in nm
   int cumSearchMove; // Cumulative search movement in nm
   int searchAmplitude; // in nm
-  int _move; // Amount to move, in nm
+  float _move; // Amount to move, in um
 };
 
 

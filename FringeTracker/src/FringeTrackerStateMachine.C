@@ -78,7 +78,7 @@ int FringeTrackerStateMachine::advance(){
       _move=0;
     }
     else{
-      _move=delay;//(64-iMax[iB])*250;
+      _move=delay*c.gain();//(64-iMax[iB])*250;
       if(_move>c.maxGD()) _move=c.maxGD();
       if(_move<-c.maxGD()) _move=-c.maxGD();
     }
@@ -104,13 +104,6 @@ int FringeTrackerStateMachine::advance(){
   else{
     printf("Unknown state: state=%d\n",_state);
     exit(1);
-  }
-  // For debugging only
-
-  int verbose=0;
-  if(verbose>0){
-    printf("State=%2d  cumSearch=%6d   bMove=%6d\n",
-	   _state,cumSearchMove,_move);
   }
 
   return 0;

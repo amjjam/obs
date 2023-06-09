@@ -62,14 +62,15 @@ void DelayMachineGD::computeAveragePSpecPeak(){
     }
   float avg=sum/nn;
 
-  // Find the RMS of the 50% low values around their average
+  // Find the RMS of the 90% low values around their average
   float tmp;
+  sum=0;
   for(unsigned int i=0;i<pSpecX.size();i++)
     if(pSpecX.power()[i]>0){
       tmp=pSpecX.power()[i]-avg;
       sum+=tmp*tmp;
     }  
-  snrHistory[iPeakHistory]=(max-avg)/sqrt(sum);
+  snrHistory[iPeakHistory]=(max-avg)/sqrt(sum/nn);
   
   iPeakHistory++;
   if(iPeakHistory==nSmooth) iPeakHistory=0;

@@ -18,26 +18,22 @@ Help help({
     "--delaylines <int>",
     "  Is the number of delaylines. Default is 6.",
     "--delaylines-index {<int>}",
-    "  It is assumed that the baselines are in linear order, but the delay lines",
-    "  which correspond to endpoints can be out of order. This is the index to",
-    "  the delay line and should be one more than the number of baselines. Default",
-    "  it 0, 1, 2, ....",
+    "  It is assumed that the baselines are in linear order, but the delay",
+    "  lines which correspond to endpoints can be out of order. This is the",
+    "  index to the delay line and should be one more than the number of",
+    "  baselines. Default is 0, 1, 2, ....",
     "--state-machine-stats <int> <int>",
-    "  Controls how often fringe tracker state machine statistics are collected",
-    "  and reported. The first number is the number of ms between samples. The",
-    "  second is the number of ms between reports. Defaults are 10 1000.",
+    "  Controls how often fringe tracker state machine statistics are",
+    "  collected and reported. The first number is the number of ms between",
+    "  samples. The second is the number of ms between reports. Defaults are",
+    "  10 1000.",
     "--sender-pspec <string> <int>",
     "  Specifies a communicator and a time interval in ms. Sends the delay",
     "  machine average power spectrum via the communicator at the ms interval.",
-    "  Should only be specified once on the command line. The format of the",
-    "  packet is",
-    "  m <int> - number of power spectra",
-    "  Then follows m blocks:"
-    "  k <int> - size of following string",
-    "  s <string> - k characters",
-    "  n <int> - number of coordinates"
-    "  x <float>[n] - n floats for the x coordinates"
-    "  y <float>[n] - n floats for the y values"    
+    "--active <int>",
+    "  <int> the state machines should begin in the active (1) or inactive (0)",
+    "  state. Default is inactive (0).",
+    "  The state machines should begin in the inactive state"
     /* ======================================================================*/
   });
 
@@ -76,6 +72,7 @@ unsigned int sender_pspec_interval;
 int nDelaylines=6;
 int stateMachineTSample=10;
 int stateMachineTReport=1000;
+bool active=false;
 
 std::vector<std::string> names;
 std::vector<DelayMachineGD> delayMachines;
@@ -100,16 +97,6 @@ int main(int argc, char *argv[]){
       perror("could not start thread_pspec");
       exit(EXIT_FAILURE);
     }
-  
-  //sem_init(&s_phasors,0,0);
-  // Create a listening thread for:
-  // 1: configuration (baselines, wavelengths)
-  // 2: new phasors
-  // 3: commands for updating parameters of delay machines and state machines
-
-  // Create a thread for sampling state information for diagnostic displays
-
-
   
   amjComEndpointUDP r(receiver_phasors,"");
   amjComEndpointUDP s("",sender_movements);
@@ -147,7 +134,7 @@ int main(int argc, char *argv[]){
     // Load baseline movements into delay line movement calculator
     Delays<float> baselinemovements(stateMachines.size());
     for(unsigned int i=0;i<stateMachines.size();i++)
-      baselinemovements[i]=stateMachines[i].movement();
+      baselinemovements[i]=-stateMachines[i].movement();
     std::cout << baselinemovements;
     for(unsigned int i=0;i<stateMachines.size();i++)
       std::cout << stateMachines[i].stateName() << " ";
@@ -202,6 +189,18 @@ void parse_args(int argc, char *argv[]){
       i++;
       sender_pspec_interval=atoi(argv[i]);
     }
+    else if(strcmp(argv[i],"--active")==0){
+      i++;
+      if(atoi(argv[i])==0)
+	active=false;
+      else if(atoi(argv[i])==1)
+	active=true;
+      else{
+	std::cout << "tracker: invalid --active parameter: " << argv[i]
+		  << std::endl;
+	exit(EXIT_FAILURE);
+      }
+    }
     else{
       std::cout << "unrecognized parameter: " << argv[i] << std::endl;
       exit(EXIT_FAILURE);
@@ -236,13 +235,18 @@ bool check_dimensions(){
 }
 
 void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
+  int state;
+  if(active)
+    state=STATE_SEARCH;
+  else
+    state=STATE_STOP;
   // Next create the new fringe tracker objects
   delayMachines.clear();
   stateMachines.clear();
   for(unsigned int i=0;i<s.size();i++){
     delayMachines.push_back(DelayMachineGD(s[i].L(),s[i].nOver(),
 					   s[i].nIncoherent(),s[i].nSmooth()));
-    stateMachines.push_back(FringeTrackerStateMachine(s[i].name()));
+    stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
   }
 	
   baseline2delayline=Baseline2DelaylineLinear(s.size(),nD);
