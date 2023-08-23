@@ -1,7 +1,8 @@
 #ifndef _PHASORSIM_H_
 #define _PHASORSIM_H_
 
-#include "../../shared/include/Phasors.H"
+#include <amjFourier.H>
+//#include "../../shared/include/Phasors.H"
 #include "../../shared/include/Wavelengths.H"
 
 class PhasorsSim{

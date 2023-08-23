@@ -45,8 +45,9 @@ Help help({
     "  <string> sin or cos",
     "     <float> A amplitude in micrometers",
     "     <float> T period in seconds",    
-    "//--sender-frames",
-    "//  A communicator for sending simulated frames.",
+    "--sender-frames <string>",
+    "  A message queue communicator for sending simulated frames.",
+    "  Format: /<name>:nbuffers:buffersize."
     /*=======================================================================*/
   });
 
@@ -55,8 +56,11 @@ Help help({
 #include <semaphore.h>
 #include <unistd.h>
 #include <memory>
+#include <stdint.h>
 
 #include <amjComUDP.H>
+#include <amjComMQ.H>
+#include <amjFourier.H>
 
 #include "../include/DelaylineSimulator.H"
 #include "../include/PhasorsSim.H"
@@ -67,13 +71,14 @@ void *receiverdelaylines(void *d);
 void send2(amjPacket &p, amjComEndpointUDP &s);
 
 int nDelaylines=6;
-int timedelay=5000000;
-int frameinterval=10;
+int timedelay=5000000; // In nanoseconds
+int frameinterval=10; // in milliseconds
 std::string receiver_delaylines;
 std::string sender_phasors;
 std::string sender_phasors2;
 int interval_phasors2;
 struct timespec last_phasors2;
+std::string sender_frames;
 
 std::mutex m;
 sem_t framesem;
@@ -97,7 +102,8 @@ int main(int argc, char *argv[]){
   DelaylineSimulator delaylinesimulator(nDelaylines,timedelay);
   amjComEndpointUDP sender("",sender_phasors);
   amjComEndpointUDP sender2("",sender_phasors2);
-  amjPacket packet;
+  amjComEndpointMQ senderf("",sender_frames);
+  amjPacket packet,packetf;
   
   // Create a thread to receive delays
   pthread_t thread_receiverdelaylines;
@@ -108,9 +114,33 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
     }
   
-  int i=0;
   Delays<double> positions;
-  for(;;){
+
+  // Initialize the frame simulator
+  FourierSim f;
+  
+  Beam beam1(0,13,[&positions](double t)->double{return positions[0];},
+	     [](double L)->double{return 1;});
+  Beam beam2(26,13,[&positions](double t)->double{return positions[1];},
+	     [](double L)->double{return 1;});
+  Beam beam3(78,13,[&positions](double t)->double{return positions[2];},
+	     [](double L)->double{return 1;});
+  f.beams(std::vector<Beam>({beam1,beam2,beam3}));
+  
+  Baseline baseline1(beam1,beam2,
+		     [](double L)->std::complex<double>{return 1;});
+  Baseline baseline2(beam2,beam3,
+		     [](double L)->std::complex<double>{return 1;});
+  Baseline baseline3(beam3,beam1,
+		     [](double L)->std::complex<double>{return 1;});
+  f.baselines(std::vector<Baseline>({baseline1,baseline2,baseline3}));
+
+  Frame<double> framed(256,320);
+  Frame<uint16_t> frameu(256,320);
+  
+  long seed=1;
+  
+  for(int i=0;;i++){
     // Wait for timer trigger
     sem_wait(&framesem);
     if(i%100==0)
@@ -122,19 +152,29 @@ int main(int argc, char *argv[]){
 
     std::cout << positions << std::endl;
     
-    packet.clear();
-    packet << (int)phasorssims.size();
-    for(unsigned int i=0;i<phasorssims.size();i++)
-      packet << phasorssims[i].sim.phasors(positions[phasorssims[i].dlp]-
-					   positions[phasorssims[i].dlm]);
+    //packet.clear();
+    //packet << (int)phasorssims.size();
+    //for(unsigned int i=0;i<phasorssims.size();i++)
+    //  packet << phasorssims[i].sim.phasors(positions[phasorssims[i].dlp]-
+    //					   positions[phasorssims[i].dlm]);
     
-    sender.send(packet);
-    send2(packet,sender2);
-    i++;
+  //sender.send(packet);
+  // send2(packet,sender2);
+    
+    if(sender_frames.size()>0&&(i%1)==0){
+      std::cout << "frame" << std::endl;
+      f.frame(0,framed);
+      poisson<double,uint16_t>(framed,frameu,seed);
+      packetf.clear();
+      packetf << frameu;
+      senderf.send(packetf);
+    }
     
     // Wait for timer trigger - in the future alarm will post to the semaphore
-    usleep(1000*frameinterval);
+    //usleep(1000*frameinterval);
     sem_post(&framesem);
+
+    i++;
   }
   
   return 0;
@@ -200,6 +240,10 @@ void parse_args(int argc, char *argv[]){
       i++;
       params.push_back(atof(argv[i]));
       externaldelaysimulator.function(index,function,params);
+    }
+    else if(strcmp(argv[i],"--sender-frames")==0){
+      i++;
+      sender_frames=argv[i];
     }
     else{
       std::cout << "unrecognized parameter: " << argv[i] << std::endl;
