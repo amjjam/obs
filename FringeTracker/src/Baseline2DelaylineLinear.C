@@ -15,8 +15,11 @@ Delays<float> Baseline2DelaylineLinear::delaylineMovements(){
     D[index[0]]=0;
   for(unsigned int i=0;i<B.size();i++){
     D[index[i+1]]=D[index[i]]+B[i];
-    sum+=B[i];
+    //sum+=D[index[i+1]];
+    //sum+=B[i];
   }
+  for(unsigned int i=0;i<D.size();i++)
+    sum+=D[i];
   double avg=sum/index.size();
   for(unsigned int i=0;i<index.size();i++)
     D[index[i]]-=avg;
