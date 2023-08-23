@@ -1,4 +1,4 @@
-FLAGS=-Wall -g -I/opt/amjCom/include -L/opt/amjCom/lib
+FLAGS=-Wall -g -I/opt/amjCom/include -L/opt/amjCom/lib -I/opt/amj/include -L/opt/amj/lib
 CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
@@ -10,7 +10,7 @@ DATAPROCESSOR_OBJ=$(DATAPROCESSOR_SRC:.C=.o)
 all: DataProcessor
 
 DataProcessor: $(DATAPROCESSOR_OBJ)
-	$(CPP) -o $@ $^ -lamjCom
+	$(CPP) -o $@ $^ -lamjCom -lamjFourier -lamjInterferometry
 
 clean:
 	- rm DataProcessor

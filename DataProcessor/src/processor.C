@@ -17,9 +17,9 @@
     S - standard deviation of noise in each of real and imaginary parts
     d - delay in microns
     (This is intended for testing)
-  --fourier-baseline
-    TBD specifies the information needed to compute phasors from a FOURIER
-    frame
+  --fourier-baseline p
+    p the period in pixels of the shortest wavelength channel
+    (specify once for each baseline)
   ===========================================================================*/
 
 #include <cstring>
@@ -30,9 +30,12 @@
 #include <time.h>
 
 #include <amjComUDP.H>
+#include <amjComMQ.H>
 
-#include "../../shared/include/Phasors.H"
-#include "../include/DataProcessorBaselineSim.H"
+#include <amjFourier.H>
+
+//#include "../../shared/include/Phasors.H"
+//#include "../include/DataProcessorBaselineSim.H"
 
 void parse_args(int argc, char *argv[]);
 int read_argv_baseline(char *argv[]);
@@ -41,46 +44,52 @@ std::string receiver_frames;
 std::string sender_tracker;
 std::string sender_phasorviewer;
 
-PhasorSets phasorsets;
-std::vector<DataProcessorBaselineSim> sim;
+//std::vector<DataProcessorBaselineSim> sim;
 time_t t0=0;
 time_t t1;
 
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
   
-  amjComEndpointUDP r(receiver_frames,"");
+  amjComEndpointMQ r(receiver_frames,"");
   amjComEndpointUDP s("",sender_tracker);
   amjComEndpointUDP p("",sender_phasorviewer);
   
-  amjPacket f;
-  amjPacket packet;
+  amjPacket fpacket;
+  amjPacket ppacket;
+
+  FourierCompute compute;
+  PhasorSets phasors;
+
+  Frame<uint16_t> frame(256,320);
   
-  phasorsets.resize(sim.size());
-
   for(int i=0;;i++){
-    // Wait for frames
-    usleep(10000);
-    
-    // Process frames
-    for(unsigned int j=0;j<phasorsets.size();j++)
-      phasorsets[j]=sim[j].makePhasors();
+    // Wait for packet
+    r.receive(fpacket);
 
-    packet.reset();
-    packet << phasorsets;
+    std::cout << "received" << std::endl;
+    
+    // Read frame
+    fpacket >> frame;
+    
+    // Process frame
+    compute.phasors(frame,{4,8,12},phasors);
+
+    // Write phasors into packet
+    ppacket.clear();
+    ppacket << phasors;
     
     // Send results to tracker
-    s.send(packet);
+    s.send(ppacket);
     if(i%100==0)
       std::cout << i/100 << std::endl;
-
+    
     // Send results to phasor viewer
     t1=time(NULL);
     if(t1>t0){
       t0=t1;
       if(sender_phasorviewer.size()>0){
-	packet.reset();
-	p.send(packet);
+	p.send(ppacket);
       }
     }
   }
@@ -114,14 +123,14 @@ void parse_args(int argc, char *argv[]){
 }
 
 int read_argv_baseline(char *argv[]){
-  std::string name=argv[0];
-  int n=atoi(argv[1]);
-  float L0=atof(argv[2]);
-  float L1=atof(argv[3]);
-  float A=atof(argv[4]);
-  float S=atof(argv[5]);
-  float d=atof(argv[6]);
-  sim.push_back(DataProcessorBaselineSim(name,n,L0,L1,A,S,d));
+  // std::string name=argv[0];
+  // int n=atoi(argv[1]);
+  // float L0=atof(argv[2]);
+  // float L1=atof(argv[3]);
+  // float A=atof(argv[4]);
+  // float S=atof(argv[5]);
+  // float d=atof(argv[6]);
+  // sim.push_back(DataProcessorBaselineSim(name,n,L0,L1,A,S,d));
   
   return 7;
 }
