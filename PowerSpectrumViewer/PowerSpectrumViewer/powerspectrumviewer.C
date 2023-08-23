@@ -18,10 +18,10 @@ PowerSpectrumViewer::PowerSpectrumViewer(QWidget *parent)
   ui->widget->addGraph();
   ui->widget->graph(1)->setPen(QPen(Qt::green));
   ui->widget->addGraph();
+  ui->widget->graph(2)->setPen(QPen(Qt::blue));
 }
 
-PowerSpectrumViewer::~PowerSpectrumViewer()
-{
+PowerSpectrumViewer::~PowerSpectrumViewer(){
   delete ui;
 }
 
