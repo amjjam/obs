@@ -22,11 +22,10 @@ Help help({
     "  lines which correspond to endpoints can be out of order. This is the",
     "  index to the delay line and should be one more than the number of",
     "  baselines. Default is 0, 1, 2, ....",
-    "--state-machine-stats <int> <int>",
-    "  Controls how often fringe tracker state machine statistics are",
-    "  collected and reported. The first number is the number of ms between",
-    "  samples. The second is the number of ms between reports. Defaults are",
-    "  10 1000.",
+    "--sender-tracker-stats <string> <int> <int>",
+    "  Specifies a communicator for sending fringe tracker statistics (first),",
+    "  and a sampling interval in ms (second), and a reporting interval in ms",
+    "  (third). Defaults for intervals are 5 ms and 1000 ms",
     "--sender-pspec <string> <int>",
     "  Specifies a communicator and a time interval in ms. Sends the delay",
     "  machine average power spectrum via the communicator at the ms interval.",
@@ -63,24 +62,36 @@ void parse_args(int,char *[]);
 bool check_dimensions();
 void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &);
 void* sample_pspec(void *);
+void* sample_tracker_stats(void *);
+void resizetrackerstats();
 
 std::string receiver_phasors;
 std::string sender_movements;
 std::string sender_pspec;
 unsigned int sender_pspec_interval;
+std::string sender_tracker_stats;
+unsigned int sender_tracker_stats_sample_interval;
+unsigned int sender_tracker_stats_report_interval;
 
 int nDelaylines=6;
 int stateMachineTSample=10;
 int stateMachineTReport=1000;
 bool active=false;
 
-std::vector<std::string> names;
+//std::vector<std::string> names;
 std::vector<DelayMachineGD> delayMachines;
 std::vector<FringeTrackerStateMachine> stateMachines;
 
 PhasorSets phasors;
 //std::vector<std::vector<std::complex<float> > > phasors; /* [nBl][nLambda] */
 std::vector<std::pair<float,float> > baselinemovements;
+
+// For state machine sampling and reporting
+std::vector<std::string> baselinenames;
+std::vector<std::string> statenames;
+std::vector<FringeTrackerStateMachineStatistics> stats;
+bool flag_resizetrackerstats=true;
+
 
 int nD=6;
 Baseline2DelaylineLinear baseline2delayline(0,nD);
@@ -95,6 +106,15 @@ int main(int argc, char *argv[]){
   if(sender_pspec.size()>0)
     if(pthread_create(&thread_pspec,nullptr,sample_pspec,nullptr)!=0){
       perror("could not start thread_pspec");
+      exit(EXIT_FAILURE);
+    }
+
+  // Create a thread to sample the fringe trackers states and send statistics
+  pthread_t thread_tracker_stats;
+  if(sender_tracker_stats.size()>0)
+    if(pthread_create(&thread_tracker_stats,nullptr,sample_tracker_stats,
+		      nullptr)!=0){
+      perror("could not start thred_tracker_stats");
       exit(EXIT_FAILURE);
     }
   
@@ -135,10 +155,10 @@ int main(int argc, char *argv[]){
     Delays<float> baselinemovements(stateMachines.size());
     for(unsigned int i=0;i<stateMachines.size();i++)
       baselinemovements[i]=-stateMachines[i].movement();
-    std::cout << baselinemovements;
-    for(unsigned int i=0;i<stateMachines.size();i++)
-      std::cout << stateMachines[i].stateName() << " ";
-    std::cout << std::endl;
+    //std::cout << baselinemovements;
+    //for(unsigned int i=0;i<stateMachines.size();i++)
+    //  std::cout << stateMachines[i].stateName() << " ";
+    //std::cout << std::endl;
     baseline2delayline.loadBaselineMovements(baselinemovements);
       
     // Send baseline movements to delay line interface
@@ -146,7 +166,7 @@ int main(int argc, char *argv[]){
 
     m.unlock();
 
-    std::cout << delaylinemovements << std::endl;
+    //std::cout << delaylinemovements << std::endl;
     packet.clear();
     packet << delaylinemovements;
     s.send(packet);
@@ -189,6 +209,14 @@ void parse_args(int argc, char *argv[]){
       i++;
       sender_pspec_interval=atoi(argv[i]);
     }
+    else if(strcmp(argv[i],"--sender-tracker-stats")==0){
+      i++;
+      sender_tracker_stats=argv[i];
+      i++;
+      sender_tracker_stats_sample_interval=atoi(argv[i]);
+      i++;
+      sender_tracker_stats_report_interval=atoi(argv[i]);
+    }
     else if(strcmp(argv[i],"--active")==0){
       i++;
       if(atoi(argv[i])==0)
@@ -225,7 +253,7 @@ bool check_dimensions(){
   for(unsigned int i=0;i<phasors.size();i++)
     if(phasors[i].size()!=delayMachines[i].size()){
       std::cout << "tracker: number of wavelengths mismatched on baseline "
-		<< names[i] << " (" << i << "): delayMachines: "
+		<< stateMachines[i].name() << " (" << i << "): delayMachines: "
 		<< delayMachines[i].size() << ", phasors: "
 		<< phasors[i].size() << std::endl;
       return false;
@@ -250,6 +278,7 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
   }
 	
   baseline2delayline=Baseline2DelaylineLinear(s.size(),nD);
+  flag_resizetrackerstats=true;
 }
 
 void* sample_pspec(void *dummy){
@@ -269,3 +298,45 @@ void* sample_pspec(void *dummy){
   }
 }
 
+void *sample_tracker_stats(void *dummy){
+  amjComEndpointUDP s("",sender_tracker_stats);
+  amjPacket packet;
+  unsigned int sender_tracker_time_since_report=0;
+  m.lock();
+  if(flag_resizetrackerstats)
+    resizetrackerstats();
+  flag_resizetrackerstats=false;
+  m.unlock();
+  for(;;){
+    m.lock();
+    for(unsigned int i=0;i<stats.size();i++)
+      stats[i].update(stateMachines[i].state());
+    m.unlock();
+    if(sender_tracker_time_since_report>=sender_tracker_stats_report_interval){
+      packet.clear();
+      packet << baselinenames;
+      packet << statenames;
+      for(unsigned int i=0;i<stats.size();i++)
+	packet << stats[i].stats();
+      s.send(packet);
+      sender_tracker_time_since_report=0;
+    }
+    else
+      sender_tracker_time_since_report+=sender_tracker_stats_sample_interval;
+    usleep(1000*sender_tracker_stats_sample_interval);
+  }
+}
+
+void resizetrackerstats(){
+  unsigned int nbaselines=stateMachines.size();
+  unsigned int nstates=stateMachines[0].nstates();
+  baselinenames.resize(nbaselines);
+  statenames.resize(nstates);
+  stats.resize(nbaselines);
+  for(unsigned int i=0;i<nbaselines;i++){
+    baselinenames[i]=stateMachines[i].name();
+    stats[i].resize(nstates);
+  }
+  for(unsigned int i=0;i<nstates;i++)
+    statenames[i]=stateMachines[0].stateName(i);
+}
