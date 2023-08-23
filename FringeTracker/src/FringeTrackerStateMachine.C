@@ -1,6 +1,9 @@
 #include "../include/FringeTrackerStateMachine.H"
 
+
 #include <iostream>
+
+#include <amjPacket.H>
 
 FringeTrackerStateMachineConfig::
 FringeTrackerStateMachineConfig(int state,float foundSNR,float lostSNR,
@@ -13,6 +16,33 @@ FringeTrackerStateMachineConfig(int state,float foundSNR,float lostSNR,
   _searchAMax(searchAMax),_searchStepSize(step),_searchFactor(factor),
   _maxGD(maxGD),_gain(gain){}
 
+std::vector<float> FringeTrackerStateMachineStatistics::stats(){
+  std::vector<float> _stats(counts.size());
+  float sum;
+  for(unsigned int i=0;i<counts.size();i++)
+    sum+=counts[i];
+  for(unsigned int i=0;i<counts.size();i++)
+    _stats[i]=(float)counts[i]/sum;
+  return _stats;
+}
+
+void FringeTrackerStateMachineStatistics::update(int i){
+  if(i<0||i>=(int)counts.size()){
+    std::cout << "beyond end of array: state=" << i << ", array size="
+	      << counts.size() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  counts[i]++;
+}
+
+void FringeTrackerStateMachineStatistics::write(amjPacket &p) const{
+  p << counts;
+}
+
+void FringeTrackerStateMachineStatistics::read(amjPacket &p){
+  p >> counts;
+}
+
 std::string FringeTrackerStateMachine::stateName() const{
   return stateName(_state);
 }
@@ -24,7 +54,7 @@ std::string FringeTrackerStateMachine::stateName(int state) const{
 }
 
 int FringeTrackerStateMachine::advance(){
-  std::cout << delay << " " << snr << std::endl;
+  //std::cout << delay << " " << snr << std::endl;
   if(_state==STATE_STOP){
     _move=0;
       return 0;

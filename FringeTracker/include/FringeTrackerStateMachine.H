@@ -5,6 +5,8 @@
 #include <vector>
 #include <complex>
 
+#include <amjPacketRW.H>
+
 #define STATE_STOP 0
 #define STATE_SEARCH 1
 #define STATE_FOUND 2
@@ -59,16 +61,33 @@ private:
   float _maxGD;
   float _gain;
 };
-  
+
+class FringeTrackerStateMachineStatistics{
+public:
+  FringeTrackerStateMachineStatistics(int n=0):counts(n){};
+  ~FringeTrackerStateMachineStatistics(){};
+  void resize(int n){counts.resize(n);};
+  void clear(){for(unsigned int i=0;i<counts.size();i++) counts[i]=0;};
+  void update(int);
+  std::vector<float> stats();
+  virtual int memsize() const {return sizeof(int)+counts.size()*sizeof(int);};
+  virtual void write(amjPacket &p) const;
+  virtual void read(amjPacket &p);
+private:
+  std::vector<int> counts;
+};
+
 class FringeTrackerStateMachine{
 public:
   FringeTrackerStateMachine(std::string name="none", int state=STATE_STOP):
     _name(name),_state(state),
     _stateNames({"Stopped","Searching","Found","Locked","Lost"}){};
   ~FringeTrackerStateMachine(){};
+  std::string name(){return _name;};
   std::string stateName() const;
   std::string stateName(int state) const;
   // State functions
+  int nstates() const {return _stateNames.size();};
   int state() const {return _state;}; // current state
   void loadDelay(const std::pair<float,float> &d){delay=d.first;snr=d.second;}; // Load the next delay
   int advance(); // Advance the state machine
