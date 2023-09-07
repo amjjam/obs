@@ -50,6 +50,8 @@ DelaylineInterface *delaylineinterface=nullptr;
 
 std::mutex m;
 
+bool debug=false;
+
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
@@ -71,7 +73,8 @@ int main(int argc, char *argv[]){
     p.clear();
     r.receive(p);
     p >> movements;
-    std::cout << movements.size() << std::endl;
+    if(debug)
+      std::cout << movements.size() << std::endl;
     m.lock();
     delays+=movements;
     m.unlock();
