@@ -1,0 +1,43 @@
+#
+
+# Number of delay lines (including non-operational)
+NDELAYLINES = 6
+
+# List of baseline names in the order they should be presented to the
+# Fringe Tracker
+BASELINES = baseline1 baseline2
+
+# List of fringe periods, one for each baseline
+# Fringe periods are in pixels in the shortest-wavelength channel. The
+# direction of the baseline vectors can be controlled by the sign of
+# the fringe period.
+FRINGEPERIODS = -10 -5
+
+# Number of wavelength channels for each baseline
+NCHANNELS = 64 64
+
+# Wavelength range for each baseline
+WAVELENGTHRANGES = 1 2.5 1 2.5
+
+# Default fringe tracker parameters for all baselines
+# nOver nIncoheret nSmooth
+# probably just hardcode this DELAYMACHINEPARAMETERS = 4 5 1
+
+# Size of frames read by DataProcessor and produced by Simulator
+# May be just used by Simulator in the future
+# FRAMESIZE = nL nF
+# nL is number of wavelength channels
+# nF is number of bins in the fringe direction
+FRAMESIZE = 64 64
+
+# Simulator delayline delay models
+# SIMDELAYMODEL = delayline_number function parameters
+# for square and cos parameters are amplitude (microns) and period (seconds)
+# The first delayline is number 1
+# Default delay is zero
+SIMDELAYMODEL = 2 square 50 30
+SIMDELAYMODEL = 3 cos 50 30
+
+# Delaycontroller command output
+# DELAYCONTROLLERDESTINATION = <ip address> <port>
+# DELAYCONTROLLEROUTPUTFORMAT = simulator or MROI
