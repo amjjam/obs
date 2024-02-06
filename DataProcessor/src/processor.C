@@ -7,6 +7,11 @@
     Specifies a communicator to the tracker
   --sender-phasorviewer <string>
     Specifies a communicator to the phasor viewer
+  --framesize nL nF - number of pixels in wavelength and fringe direction
+    Defaults are nL=256 and nF=320
+  --fringeperiod p - number of pixels in one fringe period. Specify once
+    for each baseline and specify in order to send to the tracker. Sign
+    positive or negative
   --baseline name n L0 L1 A S d
     (<string> <int> <float> <float> <float> <float>)
     name - baseline name
@@ -33,6 +38,7 @@
 #include <amjComMQ.H>
 
 #include <amjFourier.H>
+#include <amjTime.H>
 
 //#include "../../shared/include/Phasors.H"
 //#include "../include/DataProcessorBaselineSim.H"
@@ -44,9 +50,14 @@ std::string receiver_frames;
 std::string sender_tracker;
 std::string sender_phasorviewer;
 
+int nL=256,nF=320;
+std::vector<float> periods;
+
 //std::vector<DataProcessorBaselineSim> sim;
 time_t t0=0;
 time_t t1;
+
+bool debug=false;
 
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
@@ -58,31 +69,46 @@ int main(int argc, char *argv[]){
   amjPacket fpacket;
   amjPacket ppacket;
 
-  FourierCompute compute;
+  FourierCompute compute(nL,nF,periods);//{-10,-5});
   PhasorSets phasors;
 
-  Frame<uint16_t> frame(256,320);
-  
+  Frame<uint16_t> frame(nL,nF);
+
+  timespec ts0,ts1;
+  clock_gettime(CLOCK_MONOTONIC,&ts0);
+  amjTime T;
   for(int i=0;;i++){
     // Wait for packet
     r.receive(fpacket);
 
-    std::cout << "received" << std::endl;
+    if(debug)
+      std::cout << "received" << std::endl;
     
     // Read frame
+    fpacket.reset();
+    T.read(fpacket.read(T.size()));
     fpacket >> frame;
     
     // Process frame
-    compute.phasors(frame,{4,8,12},phasors);
+    compute.phasors(frame,phasors);
 
+    if(debug)
+      std::cout << phasors[0][0].real() << " " << phasors[0][0].imag() << std::endl;
+
+    
     // Write phasors into packet
     ppacket.clear();
+    T.write(ppacket.write(T.size()));
     ppacket << phasors;
     
     // Send results to tracker
     s.send(ppacket);
-    if(i%100==0)
-      std::cout << i/100 << std::endl;
+    if(i%100==0){
+      clock_gettime(CLOCK_MONOTONIC,&ts1);
+      double t=(ts1.tv_sec-ts0.tv_sec)+(double)(ts1.tv_nsec-ts0.tv_nsec)/1e9;
+      std::cout << i/100 << " " << t/100 << std::endl;
+      clock_gettime(CLOCK_MONOTONIC,&ts0);
+    }
     
     // Send results to phasor viewer
     t1=time(NULL);
@@ -111,6 +137,16 @@ void parse_args(int argc, char *argv[]){
     else if(strcmp(argv[i],"--sender-phasorviewer")==0){
       i++;
       sender_phasorviewer=argv[i];
+    }
+    else if(strcmp(argv[i],"--framesize")==0){
+      i++;
+      nL=atoi(argv[i]);
+      i++;
+      nF=atoi(argv[i]);
+    }
+    else if(strcmp(argv[i],"--fringeperiod")==0){
+      i++;
+      periods.push_back(atof(argv[i]));
     }
     else if(strcmp(argv[i],"--baseline")==0){
       i+=read_argv_baseline(argv+i+1);
