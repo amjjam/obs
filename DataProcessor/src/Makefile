@@ -1,4 +1,9 @@
-FLAGS=-Wall -g -I/opt/amjCom/include -L/opt/amjCom/lib -I/opt/amj/include -L/opt/amj/lib
+prefix=/opt/obs
+
+LIBS=-lamjCom -lamjFourier -lamjInterferometry -lamjTime
+LDFLAGS= -L/opt/amjCom/lib -L/opt/amj/lib
+
+FLAGS=-Wall -g -I/opt/amjCom/include -I/opt/amj/include
 CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
@@ -10,7 +15,16 @@ DATAPROCESSOR_OBJ=$(DATAPROCESSOR_SRC:.C=.o)
 all: DataProcessor
 
 DataProcessor: $(DATAPROCESSOR_OBJ)
-	$(CPP) -o $@ $^ -lamjCom -lamjFourier -lamjInterferometry -lamjTime
+	$(CPP) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+install: all
+	- mkdir -p $(prefix)/bin
+	cp DataProcessor $(prefix)/bin
+
+uninstall:
+	- rm $(prefix)/bin/DataProcessor
+	- rmdir $(prefix)/bin
+	- rmdir $(prefix)
 
 clean:
 	- rm DataProcessor
