@@ -10,7 +10,7 @@ DATAPROCESSOR_OBJ=$(DATAPROCESSOR_SRC:.C=.o)
 all: DataProcessor
 
 DataProcessor: $(DATAPROCESSOR_OBJ)
-	$(CPP) -o $@ $^ -lamjCom -lamjFourier -lamjInterferometry
+	$(CPP) -o $@ $^ -lamjCom -lamjFourier -lamjInterferometry -lamjTime
 
 clean:
 	- rm DataProcessor
