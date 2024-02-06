@@ -29,6 +29,7 @@ Help help({
 #include <unistd.h>
 
 #include <amjComUDP.H>
+#include <amjTime.H>
 
 #include "../../shared/include/Delays.H"
 
@@ -68,12 +69,14 @@ int main(int argc, char *argv[]){
   amjPacket p;
   delays.resize(nDelaylines);
   movements.resize(nDelaylines);
+  amjTime T;
   
   for(int i=0;;i++){
     p.clear();
     r.receive(p);
+    T.read(p.read(T.size()));
     p >> movements;
-    if(debug)
+    //if(debug)
       std::cout << movements.size() << std::endl;
     m.lock();
     delays+=movements;
@@ -132,17 +135,20 @@ void *senderdisplay(void *dummy){
   amjComEndpointUDP s("",sender_display);
   amjPacket p;
   Delays<double> _delays;
-  
+  amjTime T;
   for(;;){
     m.lock();
     _delays=delays;
     m.unlock();
-
+    T.now();
+    
     p.clear();
+    T.write(p.write(T.size()));
     p << _delays;
     s.send(p);
-    
-    std::cout << _delays << std::endl;
+
+    if(debug)
+      std::cout << _delays << std::endl;
     usleep(sender_display_T*1000);    
   }
   
