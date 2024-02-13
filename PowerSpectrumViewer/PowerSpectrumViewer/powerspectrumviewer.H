@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <qcustomplot.h>
 
-#include <amjPacket.H>
+#include <amjCom/amjPacket.H>
 
 #include <QUdpSocket>
 
@@ -27,6 +27,8 @@ private:
   int port;
   amjPacket packet;
   QUdpSocket *socket;
+  std::vector<std::string> _names;
+  std::vector<QColor> _colors;
   void receive();
 
 };
