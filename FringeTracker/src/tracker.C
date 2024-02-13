@@ -29,6 +29,11 @@ Help help({
     "--sender-pspec <string> <int>",
     "  Specifies a communicator and a time interval in ms. Sends the delay",
     "  machine average power spectrum via the communicator at the ms interval.",
+    "--receiver-tracker-controller <string>",
+    "  Specifies a communicator for receiving commands",
+    "--sender-tracker-controller <string> <int>",
+    "  Specifies a communicator for sending tracker status (first), and an",
+    "  interval in ms (second)",
     "--active <int>",
     "  <int> the state machines should begin in the active (1) or inactive (0)",
     "  state. Default is inactive (0).",
@@ -56,7 +61,8 @@ Help help({
 
 #include <iostream>
 
-#include <amjComUDP.H>
+#include <amjCom/amjComUDP.H>
+#include <amjTime.H>
 
 void parse_args(int,char *[]);
 bool check_dimensions();
@@ -64,6 +70,8 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &);
 void* sample_pspec(void *);
 void* sample_tracker_stats(void *);
 void resizetrackerstats();
+void *tracker_controller_receiver(void *);
+void *tracker_controller_sender(void *);
 
 std::string receiver_phasors;
 std::string sender_movements;
@@ -72,6 +80,9 @@ unsigned int sender_pspec_interval;
 std::string sender_tracker_stats;
 unsigned int sender_tracker_stats_sample_interval;
 unsigned int sender_tracker_stats_report_interval;
+std::string receiver_tracker_controller;
+std::string sender_tracker_controller;
+unsigned int sender_tracker_controller_interval;
 
 int nDelaylines=6;
 int stateMachineTSample=10;
@@ -114,7 +125,26 @@ int main(int argc, char *argv[]){
   if(sender_tracker_stats.size()>0)
     if(pthread_create(&thread_tracker_stats,nullptr,sample_tracker_stats,
 		      nullptr)!=0){
-      perror("could not start thred_tracker_stats");
+      perror("could not start thread_tracker_stats");
+      exit(EXIT_FAILURE);
+    }
+
+  // Create a thread to receive commands from the Fringe Tracker GUI
+  pthread_t thread_tracker_controller_receiver;
+  if(receiver_tracker_controller.size()>0)
+    if(pthread_create(&thread_tracker_controller_receiver,nullptr,
+		      tracker_controller_receiver,
+		      nullptr)!=0){
+      perror("could not start thread_tracker_controller");
+      exit(EXIT_FAILURE);
+    }
+  
+  // Create a thread to send config feedback to the Fringe Tracker GUI
+  pthread_t thread_tracker_controller_sender;
+  if(sender_tracker_controller.size()>0)
+    if(pthread_create(&thread_tracker_controller_sender,nullptr,
+		      tracker_controller_sender,nullptr)!=0){
+      perror("could not start thread_tracker_controller_sender");
       exit(EXIT_FAILURE);
     }
   
@@ -122,12 +152,13 @@ int main(int argc, char *argv[]){
   amjComEndpointUDP s("",sender_movements);
   
   amjPacket packet;
-  
+  amjTime T;
   for(int i=0;;i++){
     //sem_wait(&s_phasors); // Wait for new phasors to arrive
 
     packet.clear();
     r.receive(packet);
+    T.read(packet.read(T.size()));
     packet >> phasors;
     if(i%100==0)
       std::cout << i/100 << std::endl;
@@ -168,6 +199,7 @@ int main(int argc, char *argv[]){
 
     //std::cout << delaylinemovements << std::endl;
     packet.clear();
+    T.write(packet.write(T.size()));
     packet << delaylinemovements;
     s.send(packet);
   }
@@ -203,12 +235,6 @@ void parse_args(int argc, char *argv[]){
       stateMachineTSample=atoi(argv[i]);
       stateMachineTReport=atoi(argv[i]);
     }
-    else if(strcmp(argv[i],"--sender-pspec")==0){
-      i++;
-      sender_pspec=argv[i];
-      i++;
-      sender_pspec_interval=atoi(argv[i]);
-    }
     else if(strcmp(argv[i],"--sender-tracker-stats")==0){
       i++;
       sender_tracker_stats=argv[i];
@@ -216,6 +242,22 @@ void parse_args(int argc, char *argv[]){
       sender_tracker_stats_sample_interval=atoi(argv[i]);
       i++;
       sender_tracker_stats_report_interval=atoi(argv[i]);
+    }
+    else if(strcmp(argv[i],"--sender-pspec")==0){
+      i++;
+      sender_pspec=argv[i];
+      i++;
+      sender_pspec_interval=atoi(argv[i]);
+    }
+    else if(strcmp(argv[i],"--receiver-tracker-controller")==0){
+      i++;
+      receiver_tracker_controller=argv[i];
+    }
+    else if(strcmp(argv[i],"--sender-tracker-controller")==0){
+      i++;
+      sender_tracker_controller=argv[i];
+      i++;
+      sender_tracker_controller_interval=atoi(argv[i]);
     }
     else if(strcmp(argv[i],"--active")==0){
       i++;
@@ -272,7 +314,7 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
   delayMachines.clear();
   stateMachines.clear();
   for(unsigned int i=0;i<s.size();i++){
-    delayMachines.push_back(DelayMachineGD(s[i].L(),s[i].nOver(),
+    delayMachines.push_back(DelayMachineGD(s[i].name(),s[i].L(),s[i].nOver(),
 					   s[i].nIncoherent(),s[i].nSmooth()));
     stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
   }
@@ -284,14 +326,19 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
 void* sample_pspec(void *dummy){
   amjComEndpointUDP s("",sender_pspec);
   amjPacket packet;
+  std::vector<std::string> names;
   std::vector<PowerSpectrum> pspecs;
   for(;;){
     m.lock();
+    names.clear();
     pspecs.clear();
-    for(unsigned int i=0;i<delayMachines.size();i++)
+    for(unsigned int i=0;i<delayMachines.size();i++){
+      names.push_back(delayMachines[i].name());
       pspecs.push_back(delayMachines[i].p());
+    }
     m.unlock();
     packet.clear();
+    packet << names;
     packet << pspecs;
     s.send(packet);
     usleep(1000*sender_pspec_interval);
@@ -316,8 +363,10 @@ void *sample_tracker_stats(void *dummy){
       packet.clear();
       packet << baselinenames;
       packet << statenames;
-      for(unsigned int i=0;i<stats.size();i++)
+      for(unsigned int i=0;i<stats.size();i++){
 	packet << stats[i].stats();
+	stats[i].clear();
+      }
       s.send(packet);
       sender_tracker_time_since_report=0;
     }
@@ -339,4 +388,52 @@ void resizetrackerstats(){
   }
   for(unsigned int i=0;i<nstates;i++)
     statenames[i]=stateMachines[0].stateName(i);
+}
+
+void *tracker_controller_receiver(void *dummy){
+  amjComEndpointUDP r(receiver_tracker_controller,"");
+  amjPacket packet;
+  int n;
+  FringeTrackerStateMachineConfig c;
+  for(;;){
+    std::cout << "tracker_controller_receiver" << std::endl;
+    r.receive(packet);
+    packet >> n;
+    m.lock();
+    if((unsigned int)n!=stateMachines.size()){
+      m.unlock();
+      std::cout << "tracker: tracker controller cmd mismatch: n=" << n
+		<< ", stateMachines.size()=" << stateMachines.size()
+		<< std::endl;
+      continue;
+    }
+    for(unsigned int i=0;i<stateMachines.size();i++){
+      c.read(packet.read(c.size()));
+      stateMachines[i].setConfig(c);
+    }    
+    m.unlock();
+  }
+}
+
+void *tracker_controller_sender(void *dummy){
+  amjComEndpointUDP s("",sender_tracker_controller);
+  amjPacket packet;
+  std::vector<std::string> names;
+  FringeTrackerStateMachineConfig c;
+  for(;;){
+    std::cout << "tracker_controller_sender" << std::endl;
+    packet.clear();
+    m.lock();
+    names.resize(stateMachines.size());
+    for(unsigned int i=0;i<stateMachines.size();i++)
+      names[i]=stateMachines[i].name();
+    packet << names;
+    for(unsigned int i=0;i<stateMachines.size();i++){
+      c=stateMachines[i].getConfig();
+      c.write(packet.write(c.size()));
+    }
+    m.unlock();
+    s.send(packet);
+    usleep(1000000);
+  }
 }
