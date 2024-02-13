@@ -2,7 +2,7 @@
 #define PHASORVIEWER_H
 
 #include <QMainWindow>
-#include <amjPacket.H>
+#include <amjCom/amjPacket.H>
 
 #include <QUdpSocket>
 #include "../../shared/include/Phasors.H"
