@@ -1,8 +1,8 @@
 #include "DelaylineViewer.H"
 
 #include <QApplication>
-#include <amjCom.H>
-#include <amjComUDP.H>
+#include <amjCom/amjCom.H>
+#include <amjCom/amjComUDP.H>
 
 #include "../../shared/include/Help.H"
 Help help({

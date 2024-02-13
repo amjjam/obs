@@ -5,6 +5,8 @@
 #include <QDateTime>
 #include <QVector>
 
+#include <amjTime.H>
+
 extern int nDelaylines;
 
 DelaylineViewer::DelaylineViewer(QWidget *parent)
@@ -33,14 +35,24 @@ DelaylineViewer::~DelaylineViewer(){
 #include <iostream>
 void DelaylineViewer::receive(){
   std::cout << "Received" << std::endl;
+  amjTime T;
   while(socket->hasPendingDatagrams()){
     QNetworkDatagram datagram=socket->receiveDatagram();
     packet.clear();
     packet.resize(datagram.data().size());
     memcpy(packet._data(),datagram.data(),datagram.data().size());
     Delays<double> delays;
+    T.read(packet.read(T.size()));
     packet >> delays;
-    ui->chart->ngraphs(delays.size());
-    ui->chart->append(QDateTime::currentDateTimeUtc(),QVector<double>(delays.d().begin(),delays.d().end()));
+    if(delays.size()!=ui->chart->ngraphs())
+      ui->chart->ngraphs(delays.size());
+    ui->chart->append(QDateTime(QDate(T.yr(),T.mo(),T.dy()),QTime(T.hr(),T.mn(),T.se(),T.ns()/1000000),QTimeZone::utc()),QVector<double>(delays.d().begin(),delays.d().end()));
+    std::cout << (int)T.yr() << "/" << (int)T.mo() << "/" << (int)T.dy() << " " << (int)T.hr() << ":" << (int)T.mn() << ":" << (int)T.se() << " " << T.ns() << " ";
+    for(int i=0;i<delays.size();i++){
+      std::cout << delays[i];
+      if(i<delays.size()-1)
+        std::cout << ", ";
+    }
+    std::cout << std::endl;
   }
 }
