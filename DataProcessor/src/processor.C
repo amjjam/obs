@@ -34,8 +34,8 @@
 #include <cstdlib>
 #include <time.h>
 
-#include <amjComUDP.H>
-#include <amjComMQ.H>
+#include <amjCom/amjComUDP.H>
+#include <amjCom/amjComMQ.H>
 
 #include <amjFourier.H>
 #include <amjTime.H>

@@ -1,9 +1,17 @@
-prefix=/opt/obs
+ifndef prefix
+	prefix=/opt/obs
+endif
+ifndef INC
+	INC=-I/opt/amj/include
+endif
+ifndef LIB
+	LIB=-L/opt/amj/lib
+endif
 
 LIBS=-lamjCom -lamjFourier -lamjInterferometry -lamjTime
-LDFLAGS= -L/opt/amjCom/lib -L/opt/amj/lib
+LDFLAGS= $(LIB)
 
-FLAGS=-Wall -g -I/opt/amjCom/include -I/opt/amj/include
+FLAGS=-Wall -g $(INC)
 CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
