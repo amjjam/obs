@@ -1,7 +1,7 @@
 #ifndef _DELAYLINEINTERFACESIMULATOR_H_
 #define _DELAYLINEINTERFACESIMULATOR_H_
 
-#include <amjComUDP.H>
+#include <amjCom/amjComUDP.H>
 
 #include "DelaylineInterface.H"
 

@@ -28,7 +28,7 @@ Help help({
 #include <pthread.h>
 #include <unistd.h>
 
-#include <amjComUDP.H>
+#include <amjCom/amjComUDP.H>
 #include <amjTime.H>
 
 #include "../../shared/include/Delays.H"
