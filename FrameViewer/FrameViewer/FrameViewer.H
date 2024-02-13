@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QThread>
 
-#include <amjPacket.H>
+#include <amjCom/amjPacket.H>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FrameViewer; }

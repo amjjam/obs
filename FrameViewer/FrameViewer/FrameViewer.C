@@ -5,8 +5,8 @@
 #include <QPixmap>
 //#include <QMatrix>
 
-#include <amjComMQ.H>
-#include <amjPacket.H>
+#include <amjCom/amjComMQ.H>
+#include <amjCom/amjPacket.H>
 #include <amjFourier.H>
 
 #include <iostream>
@@ -30,9 +30,9 @@ FrameViewer::~FrameViewer(){
 void FrameViewer::receive(amjPacket p){
   std::cout << "Frameviewer::receive" << std::endl;
   receiver->start();
-  Frame<uint16_t> frame(256,320);
+  Frame<uint16_t> frame(64,64);
   p >> frame;
-  QImage image(256,320,QImage::Format_RGB888);
+  QImage image(64,64,QImage::Format_RGB888);
   int sum=0;
   QColor c;//=QColor(frame[iL][iF],frame[iL][iF],frame[iL][iF]);
   for(unsigned int iL=0;iL<frame.nL();iL++)
@@ -47,7 +47,7 @@ void FrameViewer::receive(amjPacket p){
 }
 
 void Receiver::run(){
-  amjComEndpointMQ r("/frameviewer:1:250000","");
+  amjComEndpointMQ r("/frameviewer:2:10000","");
   amjPacket p;
   r.receive(p);
   std::cout << "got one" << std::endl;
