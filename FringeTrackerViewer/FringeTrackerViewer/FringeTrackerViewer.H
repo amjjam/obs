@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QUdpSocket>
 
-#include <amjCom.H>
+#include <amjCom/amjCom.H>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FringeTrackerViewer; }
