@@ -8,7 +8,7 @@
 #include <QLineEdit>
 #include <QUdpSocket>
 
-#include <amjPacket.H>
+#include <amjCom/amjPacket.H>
 
 #include "../../FringeTracker/include/FringeTrackerStateMachine.H"
 
