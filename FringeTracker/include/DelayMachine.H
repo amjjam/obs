@@ -11,12 +11,14 @@
 class DelayMachine{
 public:
   DelayMachine(){};
-  DelayMachine(const Wavelengths &L):L(L){};
+  DelayMachine(std::string name, const Wavelengths &L):_name(name),L(L){};
   virtual ~DelayMachine()=0;
+  std::string name() const {return _name;}
   long unsigned int size() const {return L.size();}
   virtual int load(Phasors &p)=0;
   virtual std::pair<float,float> delay()=0;
 protected:
+  std::string _name;
   Wavelengths L;
 };
 
