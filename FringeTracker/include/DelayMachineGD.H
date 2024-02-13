@@ -9,7 +9,7 @@
 class DelayMachineGD: public DelayMachine{
 public:
   DelayMachineGD(){};
-  DelayMachineGD(const Wavelengths &L, int nOver,
+  DelayMachineGD(std::string name, const Wavelengths &L, int nOver,
 		 int nIncoherent, int nSmooth);
   virtual ~DelayMachineGD(){};
   virtual int load(Phasors &p);
