@@ -1,17 +1,40 @@
-CPPFLAGS=-Wall -g -I/opt/amjCom/include -I/opt/amj/include -L/opt/amjCom/lib -L/opt/amj/lib 
+ifndef prefix
+	prefix=/opt/obs
+endif
+ifndef INC
+	INC=-I/opt/amj/include
+endif
+ifndef LIB
+	LIB=-L/opt/amj/lib
+endif
+
+LIBS = -lamjCom -lamjFourier -lamjInterferometry -lamjTime
+LDFLAGS = $(LIB)
+
+FLAGS=-Wall -g $(INC)
+CPPFLAGS=$(FLAGS)
+
 CPP=g++ $(CPPFLAGS)
 
 SIMULATOR_SRC=simulator.C DelaylineSimulator.C PhasorsSim.C \
-	ExternalDelaySimulator.C \
-	../../shared/src/Help.C \
+	ExternalDelaySimulator.C ../../shared/src/Help.C \
 	../../shared/src/Wavelengths.C 
-#		../../shared/src/Phasors.C
 SIMULATOR_OBJ=$(SIMULATOR_SRC:.C=.o)
 
-all: simulator
+all: Simulator
 
-simulator: $(SIMULATOR_OBJ)
-	$(CPP) -o $@ $^ -lamjCom -lamjFourier -lamjInterferometry
+Simulator: $(SIMULATOR_OBJ)
+	$(CPP) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+install: all
+	- mkdir -p $(prefix)/bin
+	cp Simulator $(prefix)/bin
+
+uninstall:
+	- rm $(prefix)/bin/Simulator
+	- rmdir $(prefix)/bin
+	- rmdir $(prefix)
 
 clean:
-	- rm simulator $(SIMULATOR_OBJ)
+	- rm Simulator
+	- rm $(SIMULATOR_OBJ)
