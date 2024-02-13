@@ -1,8 +1,8 @@
 #ifndef _POWERSPECTRUM_H_
 #define _POWERSPECTRUM_H_
 
-#include <amjPacket.H>
-#include <amjPacketRW.H>
+#include <amjCom/amjPacket.H>
+#include <amjCom/amjPacketRW.H>
 
 #include <string>
 #include <vector>

@@ -11,8 +11,8 @@
 #include <vector>
 #include <iostream>
 
-#include <amjPacket.H>
-#include <amjPacketRW.H>
+#include <amjCom/amjPacket.H>
+#include <amjCom/amjPacketRW.H>
 
 template<class T>
 class Delays: public amjPacketRW{
