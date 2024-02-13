@@ -1,8 +1,9 @@
 #include "../include/DelayMachineGD.H"
 
-DelayMachineGD::DelayMachineGD(const Wavelengths &L, int nOver,
+DelayMachineGD::DelayMachineGD(std::string name,
+			       const Wavelengths &L, int nOver,
 			       int nIncoherent, int nSmooth):
-  DelayMachine(L),nOver(nOver),nIncoherent(nIncoherent),nSmooth(nSmooth),
+  DelayMachine(name,L),nOver(nOver),nIncoherent(nIncoherent),nSmooth(nSmooth),
   ipSpecHistory(0),peakHistory(nSmooth,0),snrHistory(nSmooth,0),
   iPeakHistory(0){
   
