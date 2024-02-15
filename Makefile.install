@@ -1,5 +1,7 @@
 prefix=$(CURDIR)
 
+QMAKE=qmake
+
 TOPTARGETS := all clean install uninstall
 
 SUBDIRS_PACKAGES := packages/amjChart/amjChart/ packages/amjCom/src \

@@ -1,4 +1,4 @@
-QMAKE=qmake
+
 
 SUBDIRS_OBS := DataProcessor/src DelayController/src \
   DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
