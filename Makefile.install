@@ -1,0 +1,36 @@
+prefix=$(CURDIR)
+
+TOPTARGETS := all clean install uninstall
+
+QMAKE=qmake
+
+include Makefile.obs
+
+SUBDIRS_PACKAGES := packages/amjChart/amjChart/ packages/amjCom/src \
+  packages/amjFourier/src packages/amjTime/src packages/amjWidgets/amjWidgets \
+  packages/QCustomPlot
+
+$(TOPTARGETS): $(SUBDIRS_PACKAGES)
+$(SUBDIRS_OBS): $(SUBDIRS_PACKAGES)
+
+.PHONY: $(TOPTARGETS) $(SUBDIRS_PACKAGES)
+
+packages/amjChart/amjChart:
+	(cd $@; $(QMAKE))
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+packages/amjCom/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+packages/amjFourier/src
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+packages/amjTime/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+packages/amjWidgets:
+	(cd $@; $(QMAKE))
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+packages/QCustomPlot:
+	$(MAKE) -C $@ -f Makefile.anders $(MAKECMDGOALS)
