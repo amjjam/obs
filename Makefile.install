@@ -22,7 +22,7 @@ packages/amjChart/amjChart:
 packages/amjCom/src:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
-packages/amjFourier/src
+packages/amjFourier/src:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 packages/amjTime/src:
