@@ -29,7 +29,7 @@ dist_name=obs
 prefix_dist=$(prefix_dist_workdir)/$(dist_name)
 prefix_packages=$(prefix_dist)/packages
 
-dist: dist_gather dist_degit dist_write dist_zip dist_clean
+dist: dist_gather dist_degit dist_write dist_rm dist_zip dist_clean
 
 # Gather all the code pieces needed
 # check out the appropriate version of each package.
