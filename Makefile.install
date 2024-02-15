@@ -1,4 +1,6 @@
-prefix=$(CURDIR)
+ifndef prefix
+  prefix=$(CURDIR)
+endif
 export prefix
 
 QMAKE=qmake
