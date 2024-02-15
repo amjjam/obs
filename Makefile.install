@@ -2,8 +2,6 @@ prefix=$(CURDIR)
 
 TOPTARGETS := all clean install uninstall
 
-QMAKE=qmake
-
 SUBDIRS_PACKAGES := packages/amjChart/amjChart/ packages/amjCom/src \
   packages/amjFourier/src packages/amjTime/src packages/amjWidgets/amjWidgets \
   packages/QCustomPlot
