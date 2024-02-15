@@ -4,7 +4,7 @@ QMAKE=qmake
 
 TOPTARGETS := all clean install uninstall
 
-SUBDIRS_PACKAGES := packages/amjChart/amjChart/ packages/amjCom/src \
+SUBDIRS_PACKAGES := packages/amjChart/amjChart packages/amjCom/src \
   packages/amjFourier/src packages/amjTime/src packages/amjWidgets/amjWidgets \
   packages/QCustomPlot
 
