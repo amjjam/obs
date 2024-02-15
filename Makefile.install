@@ -13,7 +13,7 @@ $(SUBDIRS_OBS): $(SUBDIRS_PACKAGES)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS_PACKAGES)
 
-packages/amjChart/amjChart:
+packages/amjChart/amjChart: packages/QCustomPlot
 	(cd $@; $(QMAKE))
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
