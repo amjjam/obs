@@ -1,5 +1,5 @@
 
-TOPTARGETS := all clean install uninstall
+TOPTARGETS := packages all clean install uninstall
 
 QMAKE=qmake
 
@@ -62,6 +62,7 @@ dist_rm:
 
 # Create a zip file
 dist_zip:
+	- (cd $(prefix_dist_workdir); rm $(dist_name).zip)
 	(cd $(prefix_dist_workdir); zip -9 -r $(dist_name).zip $(dist_name))
 
 # Clean up so only the zip file is left

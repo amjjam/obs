@@ -5,16 +5,23 @@ export prefix
 
 QMAKE=qmake
 
-TOPTARGETS := all clean install uninstall
+TOPTARGETS := packages all clean install uninstall
 
-SUBDIRS_PACKAGES := packages/amjChart/amjChart packages/amjCom/src \
-  packages/amjFourier/src packages/amjTime/src packages/amjWidgets/amjWidgets \
-  packages/QCustomPlot
+packages: $(SUBDIRS_PACKAGES)
+
+SUBDIRS_PACKAGES :=   packages/QCustomPlot
+#packages/amjChart/amjChart \
+#  packages/amjCom/src packages/amjFourier/src packages/amjTime/src \
+#  packages/amjWidgets/amjWidgets
+
 
 $(TOPTARGETS): $(SUBDIRS_PACKAGES)
 $(SUBDIRS_OBS): $(SUBDIRS_PACKAGES)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS_PACKAGES)
+
+packages/QCustomPlot:
+	$(MAKE) -C $@ -f Makefile.anders $(MAKECMDGOALS)
 
 packages/amjChart/amjChart: packages/QCustomPlot
 	(cd $@; $(QMAKE))
@@ -33,5 +40,3 @@ packages/amjWidgets:
 	(cd $@; $(QMAKE))
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
-packages/QCustomPlot:
-	$(MAKE) -C $@ -f Makefile.anders $(MAKECMDGOALS)
