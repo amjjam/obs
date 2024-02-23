@@ -2,9 +2,19 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+isEmpty(prefix){
+  prefix=/opt/obs
+}
+isEmpty(INC){
+  INC=/opt/amj/include
+}
+isEmpty(LIB){
+  LIB=-L/opt/amj/lib
+}
+
 CONFIG += c++11
 
-INCLUDEPATH += /opt/amj/include
+INCLUDEPATH += $${INC}
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -20,9 +30,8 @@ HEADERS += \
 FORMS += \
     Obs.ui
 
-LIBS += -L/opt/amj/lib -lamjWidgets
+LIBS += $${LIB} -lamjWidgets
 
 # Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+target.path = $${prefix}/bin
+INSTALLS += target

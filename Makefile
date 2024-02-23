@@ -37,10 +37,12 @@ dist: dist_gather dist_degit dist_write dist_rm dist_zip dist_clean
 dist_gather:
 	- rm -rf $(prefix_dist)
 	mkdir $(prefix_dist)
-	git clone git@github.com:amjjam/obs.git $(prefix_dist)
+	cp -r ./* $(prefix_dist)
+#	git clone git@github.com:amjjam/obs.git $(prefix_dist)
 	mkdir $(prefix_dist)/packages
 	git clone git@github.com:amjjam/amjCom.git $(prefix_packages)/amjCom
-	(cd $(prefix_packages)/amjCom; git checkout tags/v0.1.0 --quiet)
+#	(cd $(prefix_packages)/amjCom; git checkout tags/v0.1.0 --quiet)
+	git clone git@github.com:amjjam/amjInterferometry.git $(prefix_packages)/amjInterferometry
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
 	git clone git@github.com:amjjam/amjTime.git $(prefix_packages)/amjTime
 	git clone git@github.com:amjjam/amjChart.git $(prefix_packages)/amjChart
@@ -58,7 +60,11 @@ dist_write:
 
 # Remove other things that should not be in the distribution
 dist_rm:
+	rm $(prefix_dist)/Makefile~
 	rm $(prefix_dist)/Makefile.obs
+	rm $(prefix_dist)/Makefile.obs~
+	rm $(prefix_dist)/Makefile.install~
+	(cd $(prefix_dist); find . -type f -name *~ -exec echo rm -rf {} \;)
 
 # Create a zip file
 dist_zip:

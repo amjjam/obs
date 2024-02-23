@@ -1,43 +1,62 @@
-
+TOPTARGETS := all install uninstall clean
 
 SUBDIRS_OBS := DataProcessor/src DelayController/src \
   DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
   FringeTracker/src FringeTrackerViewer/FringeTrackerViewer \
-  PowerSpectrumViewer/PowerSpectrumViewer Simulator/src \
-  TrackerController/TrackController
+  PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
+  Simulator/src TrackerController/TrackerController Obs/Obs
 
 $(TOPTARGETS): $(SUBDIRS_OBS)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS_OBS)
 
 DataProcessor/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 DelayController/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 DelaylineViewer/DelaylineViewer:
-	(cd $@; $(QMAKE))
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 FrameViewer/FrameViewer:
-	(cd $@; $(QMAKE))
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 FringeTracker/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 FringeTrackerViewer/FringeTrackerViewer:
-	(cd $@; $(QMAKE))
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+PhasorViewer/PhasorViewer:
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 PowerSpectrumViewer/PowerSpectrumViewer:
-	(cd $@; $(QMAKE))
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 Simulator/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 TrackerController/TrackerController:
-	(cd $@; $(QMAKE))
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+Obs/Obs:
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)

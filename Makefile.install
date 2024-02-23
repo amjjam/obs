@@ -5,38 +5,39 @@ export prefix
 
 QMAKE=qmake
 
-TOPTARGETS := packages all clean install uninstall
+packages_install: packages
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders install
+	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
+	prefix_QCustomPlot=$(prefix))
+	$(MAKE) -C packages/amjChart/amjChart install
+	$(MAKE) -C packages/amjCom/src install
+	$(MAKE) -C packages/amjInterferometry/src install
+	$(MAKE) -C packages/amjFourier/src install
+	$(MAKE) -C packages/amjTime/src install
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets install
 
-packages: $(SUBDIRS_PACKAGES)
+packages_uninstall:
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders uninstall
+	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
+	prefix_QCustomPlot=$(prefix))
+	$(MAKE) -C packages/amjChart/amjChart uninstall
+	$(MAKE) -C packages/amjCom/src uninstall
+	$(MAKE) -C packages/amjInterferometry/src uninstall
+	$(MAKE) -C packages/amjFourier/src uninstall
+	$(MAKE) -C packages/amjTime/src uninstall
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets uninstall
 
-SUBDIRS_PACKAGES :=   packages/QCustomPlot
-#packages/amjChart/amjChart \
-#  packages/amjCom/src packages/amjFourier/src packages/amjTime/src \
-#  packages/amjWidgets/amjWidgets
-
-
-$(TOPTARGETS): $(SUBDIRS_PACKAGES)
-$(SUBDIRS_OBS): $(SUBDIRS_PACKAGES)
-
-.PHONY: $(TOPTARGETS) $(SUBDIRS_PACKAGES)
-
-packages/QCustomPlot:
-	$(MAKE) -C $@ -f Makefile.anders $(MAKECMDGOALS)
-
-packages/amjChart/amjChart: packages/QCustomPlot
-	(cd $@; $(QMAKE))
-	$(MAKE) -C $@ $(MAKECMDGOALS)
-
-packages/amjCom/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
-
-packages/amjFourier/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
-
-packages/amjTime/src:
-	$(MAKE) -C $@ $(MAKECMDGOALS)
-
-packages/amjWidgets:
-	(cd $@; $(QMAKE))
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+packages_clean:
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders clean
+	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
+	prefix_QCustomPlot=$(prefix))
+	$(MAKE) -C packages/amjChart/amjChart clean
+	$(MAKE) -C packages/amjCom/src clean
+	$(MAKE) -C packages/amjInterferometry/src clean
+	$(MAKE) -C packages/amjFourier/src clean
+	$(MAKE) -C packages/amjTime/src clean
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets clean
 
