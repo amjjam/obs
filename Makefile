@@ -51,7 +51,7 @@ dist_gather:
 
 # Remove .git directories
 dist_degit:
-	(cd $(prefix_dist); find . -type d -name ".git" -exec echo rm -rf {} \;)
+	- find $(prefix_dist) -type d -name ".git" -exec rm -rf {} \;
 
 # Write a new Makefile for building the combined packages
 dist_write:
@@ -64,7 +64,8 @@ dist_rm:
 	rm $(prefix_dist)/Makefile.obs
 	rm $(prefix_dist)/Makefile.obs~
 	rm $(prefix_dist)/Makefile.install~
-	(cd $(prefix_dist); find . -type f -name *~ -exec echo rm -rf {} \;)
+	find $(prefix_dist) -type f -name "*~" -delete
+	find $(prefix_dist) -type f -name "*.o" -delete
 
 # Create a zip file
 dist_zip:

@@ -4,7 +4,7 @@ SUBDIRS_OBS := DataProcessor/src DelayController/src \
   DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
   FringeTracker/src FringeTrackerViewer/FringeTrackerViewer \
   PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
-  Simulator/src TrackerController/TrackerController Obs/Obs
+  Simulator/src TrackerController/TrackerController Obs/Obs obs_script
 
 $(TOPTARGETS): $(SUBDIRS_OBS)
 
@@ -60,3 +60,13 @@ Obs/Obs:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+obs_script:
+	echo "#!/bin/bash" > $(prefix)/bin/Obs.sh
+	echo "" >> $(prefix)/bin/Obs.sh
+	echo "export LD_LIBRARY_PATH=$(prefix)/lib" >> $(prefix)/bin/Obs.sh
+	echo "export PATH=$(PATH):$(prefix)/bin" >> $(prefix)/bin/Obs.sh
+	echo "" >> $(prefix)/bin/Obs.sh
+	echo "Obs" >> $(prefix)/bin/Obs.sh
+	echo "" >> $(prefix)/bin/Obs.sh
+	chmod u+x $(prefix)/bin/Obs.sh
