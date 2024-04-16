@@ -39,17 +39,17 @@ int main(int argc, char *argv[])
 void parse_args(int argc, char *argv[]){
   for(int i=1;i<argc;i++)
     if(strcmp(argv[i],"--receiver-phasors")==0){
-        i++;
-        receiver_phasors=argv[i];
-      }
+      i++;
+      receiver_phasors=argv[i];
+    }
     else if(strcmp(argv[i],"--baseline")==0){
-        wavelengths.push_back(Wavelengths(std::string(argv[i+1]),atoi(argv[i+2]),atof(argv[i+3]),atof(argv[i+4])));
-        i+=4;
-      }
+      wavelengths.push_back(Wavelengths(std::string(argv[i+1]),atoi(argv[i+2]),atof(argv[i+3]),atof(argv[i+4])));
+      i+=4;
+    }
     else{
-        std::cout << "PhasorViewer: unrecognized option: " << argv[i] << std::endl;
-        exit(EXIT_FAILURE);
-      }
+      std::cerr << "PhasorViewer: unrecognized option: " << argv[i] << std::endl;
+      exit(EXIT_FAILURE);
+    }
 }
 
 void compute_wavelengthrange(){
