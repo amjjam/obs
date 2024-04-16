@@ -31,4 +31,4 @@ INCLUDEPATH += $${INC}
         
 # Default rules for deployment.
 target.path = $${prefix}/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
