@@ -47,7 +47,7 @@ int nDelaylines=6;
 Delays<double> delays;
 Delays<float> movements;
 
-DelaylineInterface *delaylineinterface=nullptr;
+DelaylineInterface<float,double> *delaylineinterface=nullptr;
 
 std::mutex m;
 
@@ -76,17 +76,17 @@ int main(int argc, char *argv[]){
     r.receive(p);
     T.read(p.read(T.size()));
     p >> movements;
-    //if(debug)
+    if(debug)
       std::cout << movements.size() << std::endl;
-    m.lock();
-    delays+=movements;
-    m.unlock();
 
-    if(delaylineinterface)
-      delaylineinterface->send(movements);
+    if(delaylineinterface){
+      m.lock();
+      delaylineinterface->move(movements);
+      m.unlock();
+    }
     
     if(i%100==0)
-      std::cout << i/100 << " " << delays <<  std::endl;
+      std::cout << "i=" << i << " delays=" << delays <<  std::endl;
   }
   
   return 0;
@@ -138,7 +138,7 @@ void *senderdisplay(void *dummy){
   amjTime T;
   for(;;){
     m.lock();
-    _delays=delays;
+    _delays=delaylineinterface->pos();
     m.unlock();
     T.now();
     
