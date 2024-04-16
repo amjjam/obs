@@ -152,8 +152,8 @@ void parse_args(int argc, char *argv[]){
       i+=read_argv_baseline(argv+i+1);
     }
     else{
-      std::cout << "unknown parameter: " << argv[i] << std::endl;
-      exit(EXIT_FAILURE);
+      std::cerr << "unknown parameter: " << argv[i] << std::endl;
+      abort();
     }
   }
 }
