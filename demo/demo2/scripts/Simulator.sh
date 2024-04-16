@@ -2,7 +2,7 @@
 
 export LD_LIBRARY_PATH=/opt/amjCom/lib:/opt/amj/lib
 
-../../../Simulator/src/simulator \
+../../../Simulator/src/Simulator \
     --sender-frames /frames:2:10000 \
     --sender-frames2 /frameviewer:2:10000 100\
     --receiver-delaylines 127.0.0.1:27003 \
