@@ -17,6 +17,11 @@
 template<class T>
 class Delays: public amjPacketRW{
 public:
+  template<class U> Delays(const Delays<U> &m){
+    _d.resize(m.size());
+    for(unsigned int i=0;i<_d.size();i++)
+      _d[i]=m[i];
+  };
   Delays(int n=0):_d(n,0){};
   virtual ~Delays(){};
   unsigned int size() const {return _d.size();};
@@ -26,6 +31,8 @@ public:
   std::vector<T> &d(){return _d;}; 
   T &operator[](int i) {return _d[i];};
   const T &operator[](int i) const {return _d[i];};
+  template<class U> Delays<T> &operator=(const Delays<U> &);
+  template<class U> Delays<T> &operator+=(const Delays<U> &);
 private:
   std::vector<T> _d;
 };
@@ -47,18 +54,49 @@ std::ostream &operator<<(std::ostream &os, const Delays<T> &d){
   return os;
 }
 
-template<class T, class U>
-Delays<T> &operator+=(Delays<T> &d, Delays<U> &m){
-  if(d.size()!=m.size()){
+template<class T>template<class U>
+Delays<T> &Delays<T>::operator=(const Delays<U> &m){
+  if(size()!=m.size()){
     std::cout << "operator+=: dimensions mismatched: d("
-	      << d.size() << "), m(" << m.size() << ")" << std::endl;
+	      << size() << "), m(" << m.size() << ")" << std::endl;
     exit(EXIT_FAILURE);
   }
   
-  for(unsigned int i=0;i<d.size();i++)
-    d[i]+=m[i];
-  return d;  
+  for(unsigned int i=0;i<size();i++)
+    _d[i]=m[i];
+  return *this;  
 }
+
+template<class T>template<class U>
+Delays<T> &Delays<T>::operator+=(const Delays<U> &m){
+  if(_d.size()!=m.size()){
+    std::cout << "operator+=: dimensions mismatched: d("
+	      << _d.size() << "), m(" << m.size() << ")" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  
+  for(unsigned int i=0;i<_d.size();i++)
+    _d[i]+=m[i];
+  return *this;  
+}
+
+template<class T, class U>
+Delays<T> operator-(const Delays<T> &p, const Delays<U> &m){
+  if(p.size()!=m.size()){
+    std::cout << "operator-: dimensions mismatched: p("
+	      << p.size() << "), m(" << m.size() << ")" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  
+  Delays<T> r;
+  for(unsigned int i=0;i<p.size();i++)
+    r[i]=p[i]-m[i];
+  return r;  
+}
+
+//template<>template<>
+//Delays<float> &Delays<float>::operator=(const Delays<double> &);
+
 
 #endif /* _DELAYS_H_ */
 
