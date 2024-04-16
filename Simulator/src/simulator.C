@@ -176,8 +176,8 @@ int main(int argc, char *argv[]){
 	ts+=(tt[j]-ta)*(tt[j]-ta);
       ts/=100;
       ts=sqrt(ts);
-      std::cout << i/100 << " " << t << " " << ta << " "
-		<< ts << std::endl;
+      std::cout << i/100 << " " << "t=" << t << " " << "ta=" << ta << " "
+		<< "ts=" << ts << std::endl;
     }
     m.lock();
     positions=delaylinesimulator.positions();
