@@ -8,7 +8,8 @@
 class DelaylineInterfaceSimulator:public DelaylineInterface<float,double>{
 public:
   DelaylineInterfaceSimulator(unsigned int ndelaylines,std::string sender):
-    ndelaylines(ndelaylines),s("",sender){};
+    ndelaylines(ndelaylines),plocal(ndelaylines),pdl(ndelaylines),
+    s("",sender){};
   ~DelaylineInterfaceSimulator(){};
   virtual void move(const Delays<float> &);
   virtual void moveto(const Delays<double> &);
