@@ -3,7 +3,55 @@ TOPTARGETS := packages all clean install uninstall
 
 QMAKE=qmake
 
-include Makefile.obs
+SUBDIRS_OBS := DataProcessor/src DelayController/src \
+  DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
+  FringeTracker/src FringeTrackerViewer/FringeTrackerViewer \
+  PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
+  Simulator/src TrackerController/TrackerController Obs/Obs obs_script
+
+$(TOPTARGETS): $(SUBDIRS_OBS)
+
+.PHONY: $(TOPTARGETS) $(SUBDIRS_OBS)
+
+DataProcessor/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+DelayController/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+DelaylineViewer/DelaylineViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+FrameViewer/FrameViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+FringeTracker/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+FringeTrackerViewer/FringeTrackerViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+PhasorViewer/PhasorViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+PowerSpectrumViewer/PowerSpectrumViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+Simulator/src:
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+TrackerController/TrackerController:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+Obs/Obs:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 # For target dist:
 # copies all of obs to a different directory
@@ -41,7 +89,7 @@ dist_gather:
 #	git clone git@github.com:amjjam/obs.git $(prefix_dist)
 	mkdir $(prefix_dist)/packages
 	git clone git@github.com:amjjam/amjCom.git $(prefix_packages)/amjCom
-#	(cd $(prefix_packages)/amjCom; git checkout tags/v0.1.0 --quiet)
+	(cd $(prefix_packages)/amjCom; git checkout tags/v0.2.0 --quiet)
 	git clone git@github.com:amjjam/amjInterferometry.git $(prefix_packages)/amjInterferometry
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
 	git clone git@github.com:amjjam/amjTime.git $(prefix_packages)/amjTime
