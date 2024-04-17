@@ -66,7 +66,7 @@
      <widget class="amjLED" name="amjLED_DataProcessor" native="true"/>
     </item>
     <item row="19" column="2">
-     <widget class="QToolButton" name="toolButton">
+     <widget class="QToolButton" name="toolButton_LogFile">
       <property name="text">
        <string>...</string>
       </property>
@@ -183,7 +183,7 @@
      </widget>
     </item>
     <item row="2" column="5">
-     <widget class="QCheckBox" name="checkBox_2">
+     <widget class="QCheckBox" name="checkBox_stderr">
       <property name="text">
        <string>stderr</string>
       </property>
@@ -317,12 +317,19 @@
      <widget class="amjLED" name="amjLED_DelayLineViewer" native="true"/>
     </item>
     <item row="3" column="4" rowspan="15" colspan="3">
-     <widget class="QTextEdit" name="textEdit"/>
+     <widget class="QTextEdit" name="textEdit_log">
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
     </item>
     <item row="2" column="4">
-     <widget class="QCheckBox" name="checkBox">
+     <widget class="QCheckBox" name="checkBox_stdout">
       <property name="text">
        <string>stdout</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
       </property>
      </widget>
     </item>
@@ -330,7 +337,7 @@
      <widget class="QLineEdit" name="lineEdit_ConfigFile"/>
     </item>
     <item row="19" column="4" colspan="3">
-     <widget class="QLineEdit" name="lineEdit"/>
+     <widget class="QLineEdit" name="lineEdit_LogFile"/>
     </item>
    </layout>
   </widget>

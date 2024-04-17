@@ -22,10 +22,12 @@ INCLUDEPATH += $${INC}
 
 SOURCES += \
     Obs.C \
+    config.C \
     main.C
 
 HEADERS += \
-    Obs.H
+    Obs.H \
+    config.H
 
 FORMS += \
     Obs.ui
