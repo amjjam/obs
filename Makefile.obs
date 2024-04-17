@@ -19,12 +19,12 @@ DelayController/src:
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 DelaylineViewer/DelaylineViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 FrameViewer/FrameViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
@@ -33,7 +33,7 @@ FringeTracker/src:
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 FringeTrackerViewer/FringeTrackerViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
@@ -43,7 +43,7 @@ PhasorViewer/PhasorViewer:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 PowerSpectrumViewer/PowerSpectrumViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
@@ -52,12 +52,12 @@ Simulator/src:
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 TrackerController/TrackerController:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 Obs/Obs:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
