@@ -38,3 +38,5 @@ uninstall:
 clean:
 	- rm Simulator
 	- rm $(SIMULATOR_OBJ)
+
+distclean: clean

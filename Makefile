@@ -1,5 +1,5 @@
 
-TOPTARGETS := packages all clean install uninstall
+TOPTARGETS := packages all clean distclean install uninstall 
 
 QMAKE=qmake
 

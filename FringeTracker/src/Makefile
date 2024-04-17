@@ -44,3 +44,5 @@ uninstall:
 clean:
 	- rm FringeTracker
 	- rm $(TRACKER_OBJ)
+
+distclean: clean

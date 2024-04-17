@@ -37,3 +37,5 @@ uninstall:
 clean:
 	- rm DataProcessor
 	- rm $(DATAPROCESSOR_OBJ)
+
+distclean: clean

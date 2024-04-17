@@ -35,3 +35,5 @@ uninstall:
 
 clean:
 	- rm DelayController $(DELAY_OBJ)
+
+distclean: clean
