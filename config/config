@@ -1,23 +1,40 @@
-#
+# DataProcessor
+# -framesize <wavelength> <fringe>
+# -fringeperiod -10 -fringeperiod -5
+DATAPROCESSOR = --framesize 64 64 --fringeperiod -10 --fringeperiod -5
+
+# FringeTracker
+# For each baseline: name, number of wavelength, min and max in um, nOver, nIncoherent, nSmooth
+FRINGETRACKER = --baseline baseline1 64 1 2.5 4 5 1 --baseline baseline2 64 1 2.5 4 5 1 
+
+# DelaylineViewer
+DELAYLINEVIEWER = --ndelaylines 6
+
+# PhasorViewer
+# For each baseline: name, number of wavelengths, min and max in um
+PHASORVIEWER = --baseline baseline1 64 1 2.5 --baseline baseline2 64 1 2.5
+
+# Simulator
+SIMULATOR = --framesize 64 64 --baseline baseline1 1 2 200 1 2.5 1 1 1 --baseline baseline2 2 3 250 1.5 3 1 1 2 --externaldelaymodel 2 square 50 30 --externaldelaymodel 3 cos 50 30
 
 # Number of delay lines (including non-operational)
-NDELAYLINES = 6
+#NDELAYLINES = 6
 
 # List of baseline names in the order they should be presented to the
 # Fringe Tracker
-BASELINES = baseline1 baseline2
+#BASELINES = baseline1 baseline2
 
 # List of fringe periods, one for each baseline
 # Fringe periods are in pixels in the shortest-wavelength channel. The
 # direction of the baseline vectors can be controlled by the sign of
 # the fringe period.
-FRINGEPERIODS = -10 -5
+#FRINGEPERIODS = -10 -5
 
 # Number of wavelength channels for each baseline
-NCHANNELS = 64 64
+#NCHANNELS = 64 64
 
 # Wavelength range for each baseline
-WAVELENGTHRANGES = 1 2.5 1 2.5
+#WAVELENGTHRANGES = 1 2.5 1 2.5
 
 # Default fringe tracker parameters for all baselines
 # nOver nIncoheret nSmooth
@@ -28,15 +45,15 @@ WAVELENGTHRANGES = 1 2.5 1 2.5
 # FRAMESIZE = nL nF
 # nL is number of wavelength channels
 # nF is number of bins in the fringe direction
-FRAMESIZE = 64 64
+#FRAMESIZE = 64 64
 
 # Simulator delayline delay models
 # SIMDELAYMODEL = delayline_number function parameters
 # for square and cos parameters are amplitude (microns) and period (seconds)
 # The first delayline is number 1
 # Default delay is zero
-SIMDELAYMODEL = 2 square 50 30
-SIMDELAYMODEL = 3 cos 50 30
+#SIMDELAYMODEL = 2 square 50 30
+#SIMDELAYMODEL = 3 cos 50 30
 
 # Delaycontroller command output
 # DELAYCONTROLLERDESTINATION = <ip address> <port>
