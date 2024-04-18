@@ -15,6 +15,7 @@ FringeTrackerViewer::FringeTrackerViewer(QWidget *parent)
   connect(socket,&QUdpSocket::readyRead,this,&FringeTrackerViewer::receive);
 
   ui->chart->colors(QVector<QColor>{Qt::black,Qt::red,Qt::yellow,Qt::green,Qt::blue});
+  ui->chart->brush(true); // color between graphs
 }
 
 FringeTrackerViewer::~FringeTrackerViewer(){
