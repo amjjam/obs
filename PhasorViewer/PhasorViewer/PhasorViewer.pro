@@ -26,7 +26,7 @@ HEADERS += phasorviewer.H ../../shared/include/Phasors.H \
 
 FORMS += phasorviewer.ui
 
-LIBS += $${LIB} -lamjCom -lqcustomplot
+LIBS += $${LIB} -lamjCom -lqcustomplot -lamjTime
 
 INCLUDEPATH += $${INC}
 

@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+#include <amjTime.H>
+
 extern std::string receiver_phasors;
 extern std::vector<Wavelengths> wavelengths;
 extern float wavelengthrange[2];
@@ -63,7 +65,9 @@ void PhasorViewer::receive(){
       packet.resize(datagram.data().size());
       memcpy(packet.raw(),datagram.data().data(),datagram.data().size());
       packet.reset();
+      amjTime T;
       PhasorSets ps;
+      T.read(packet.read(T.size()));
       packet >> ps;
       update_plots(ps);
     }
