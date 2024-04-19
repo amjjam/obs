@@ -108,10 +108,10 @@ dist_write:
 
 # Remove other things that should not be in the distribution
 dist_rm:
-	rm $(prefix_dist)/Makefile~
+	- rm $(prefix_dist)/Makefile~
 	rm $(prefix_dist)/Makefile.obs
-	rm $(prefix_dist)/Makefile.obs~
-	rm $(prefix_dist)/Makefile.install~
+	- rm $(prefix_dist)/Makefile.obs~
+	- rm $(prefix_dist)/Makefile.install~
 	find $(prefix_dist) -type f -name "*~" -delete
 	find $(prefix_dist) -type f -name "*.o" -delete
 
