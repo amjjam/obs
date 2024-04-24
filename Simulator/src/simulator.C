@@ -51,7 +51,21 @@ Help help({
     "  A message queue communicator for sending simulated frames.",
     "  Format: /<name>:nbuffers:buffersize."
     "--sender-frames2 <string> <int>",
-    "  A message queue communicator for sending every <int> simulated frame."
+    "  A message queue communicator for sending every <int> simulated frame.",
+    "--simlog <string> a file into which the simulator log is written",
+    "  <int> the number of delaylines (nD)",
+    "  <int> the number of baselines (nB)",
+    "  nB of:",
+    "    <string> null-terminated string with name of baseline",
+    "    <int> dl-",
+    "    <int> dl+",
+    "    <int> nL",
+    "    <int> L0",
+    "    <int> L1",
+    " Then followed by one record for each frame produced",
+    " <int> <int> time frame is produced in s and ns",
+    " nD of:"
+    "   <double> delay for each delay line"
     /*=======================================================================*/
   });
 
@@ -62,6 +76,11 @@ Help help({
 #include <memory>
 #include <stdint.h>
 #include <math.h>
+
+#include <time.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <signal.h>
 
 #include <amjCom/amjComUDP.H>
 #include <amjCom/amjComMQ.H>
@@ -158,6 +177,8 @@ int main(int argc, char *argv[]){
 
   double tt[100];
 
+  
+  
   amjTime T;
   timespec t0,t1,t2,t3;
   clock_gettime(CLOCK_MONOTONIC,&t0);
