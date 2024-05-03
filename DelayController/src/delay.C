@@ -18,6 +18,16 @@ Help help({
     "  (sim/mroi/npoi). The rest are interface-specfic parameters",
     "  sim <int> <string>",
     "  <int> is the number of delaylines, <string> is the communicator",
+    "--delaylog <string> file to write a running log of delay to",
+    "  It contains a header:",
+    "  <int32> - the number of baselines",
+    "  Each time a delay update is received a record is written",
+    "  <int32> <int32> the time in s and ns in the delay packet",
+    "  <int32> <int32> the current time in s and ns",
+    "  N of",
+    "    <float> the change in the delay",
+    "    <double> the accumulated delay (after the change just received",
+    "      is applied)"
     /*=====================================================================*/
   });
 
@@ -27,6 +37,9 @@ Help help({
 #include <utility>
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
+
+#include <fstream>
 
 #include <amjCom/amjComUDP.H>
 #include <amjTime.H>
@@ -53,6 +66,15 @@ std::mutex m;
 
 bool debug=false;
 
+// Logging
+std::string delaylog;
+std::ofstream fplog;
+void sigterm_callback(int s){
+  if(fplog.is_open())
+    fplog.close();
+  exit(0);
+}
+
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
@@ -69,13 +91,20 @@ int main(int argc, char *argv[]){
   amjPacket p;
   delays.resize(nDelaylines);
   movements.resize(nDelaylines);
-  amjTime T;
+  amjTime T,TT;
+  
+  // Open the delaylog and write the header
+  if(delaylog.size()>0){
+    fplog.open(delaylog.c_str(),std::ios::binary|std::ios::out);
+    fplog.write((char *)&nDelaylines,sizeof(int));
+  }
   
   for(int i=0;;i++){
     p.clear();
     r.receive(p);
     T.read(p.read(T.size()));
     p >> movements;
+    TT.now();
     if(debug)
       std::cout << movements.size() << std::endl;
 
@@ -87,6 +116,22 @@ int main(int argc, char *argv[]){
     
     if(i%100==0)
       std::cout << "i=" << i << " delays=" << delays <<  std::endl;
+
+    if(fplog.is_open()){
+      struct timespec t=T.toTimespec(),tt=TT.toTimespec();
+      int32_t a;
+      a=t.tv_sec;
+      fplog.write((char *)&a,sizeof(int32_t));
+      a=t.tv_nsec;
+      fplog.write((char *)&a,sizeof(int32_t));
+      a=tt.tv_sec;
+      fplog.write((char *)&a,sizeof(int32_t));
+      a=tt.tv_nsec;
+      fplog.write((char *)&a,sizeof(int32_t));
+      delays=delaylineinterface->pos();
+      for(int i=0;i<delays.size();i++)
+	fplog.write((char *)&delays[i],sizeof(double));
+    }
   }
   
   return 0;
@@ -123,6 +168,10 @@ void parse_args(int argc, char *argv[]){
 		  << std::endl;
 	exit(EXIT_FAILURE);
       }
+    }
+    else if(strcmp(argv[i],"--delaylog")==0){
+      i++;
+      delaylog=argv[i];
     }
     else{
       std::cout << "unknown parameter: " << argv[i] << std::endl;

@@ -37,7 +37,23 @@ Help help({
     "--active <int>",
     "  <int> the state machines should begin in the active (1) or inactive (0)",
     "  state. Default is inactive (0).",
-    "  The state machines should begin in the inactive state"
+    "  The state machines should begin in the inactive state",
+    "--trackerlog <string> a file into which the state machine state is logged",
+    "  every time it executes. A header is written before the first record",
+    "  <int32> the number of baselines (N)",
+    "  <int32> the number of delaylines (M)",
+    "  N of",
+    "    <string> null-terminated strings of each baseline name",
+    "  Each time the state machine runs",
+    "  <int32> <int32> the time in s and ns in the last frame",
+    "  <int32> <int32> the time of recording the state in s and ns",
+    "  N of",
+    "    <uint8> - the state (0 stop, 1, searching, 2 found, 3 locked, 4 lost)",
+    "    <float> - the SNR found level",
+    "    <float> - the SNR lost level",
+    "    <float> - the current SNR",
+    "  M of",
+    "    <float> - the movement for each delay line"
     /* ======================================================================*/
   });
 
@@ -58,8 +74,10 @@ Help help({
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <iostream>
+#include <fstream>
 
 #include <amjCom/amjComUDP.H>
 #include <amjTime.H>
@@ -103,9 +121,16 @@ std::vector<std::string> statenames;
 std::vector<FringeTrackerStateMachineStatistics> stats;
 bool flag_resizetrackerstats=true;
 
+// For logging
+std::string trackerlog;
+std::ofstream fplog;
+void sigterm_callback(int s){
+  if(fplog.is_open())
+    fplog.close();
+  exit(0);
+}
 
-int nD=6;
-Baseline2DelaylineLinear baseline2delayline(0,nD);
+Baseline2DelaylineLinear baseline2delayline(0,nDelaylines);
 
 std::mutex m;
 
@@ -153,9 +178,22 @@ int main(int argc, char *argv[]){
   
   amjPacket packet;
   amjTime T;
-  for(int i=0;;i++){
-    //sem_wait(&s_phasors); // Wait for new phasors to arrive
 
+  // Open trackerlog
+  if(trackerlog.size()>0){
+    fplog.open(trackerlog.c_str(),std::ios::binary|std::ios::out);
+    int32_t nBaselines=stateMachines.size();
+    fplog.write((char *)&nBaselines,sizeof(int32_t));
+    fplog.write((char *)&nDelaylines,sizeof(int));
+    for(unsigned int i=0;i<stateMachines.size();i++)
+      fplog.write((char *)stateMachines[i].name().c_str(),
+		  stateMachines[i].name().size()+1);
+  }
+
+  // For cleanly closing the log file on SIGTERM
+  signal(SIGTERM,&sigterm_callback);
+  
+  for(int i=0;;i++){
     packet.clear();
     r.receive(packet);
     T.read(packet.read(T.size()));
@@ -202,6 +240,26 @@ int main(int argc, char *argv[]){
     T.write(packet.write(T.size()));
     packet << delaylinemovements;
     s.send(packet);
+
+    // If the log file is open write an entry to it
+    if(fplog.is_open()){
+      struct timespec t=T.toTimespec();
+      int32_t tt=t.tv_sec;
+      fplog.write((char *)&tt,sizeof(int32_t));
+      tt=t.tv_nsec;
+      fplog.write((char *)&tt,sizeof(int32_t));
+      for(unsigned int i=0;i<stateMachines.size();i++){
+	uint8_t state=stateMachines[i].state();
+	fplog.write((char *)&state,sizeof(uint8_t));
+	fplog.write((char *)&stateMachines[i].getConfig().snrFound,sizeof(float));
+	fplog.write((char *)&stateMachines[i].getConfig().snrLost,sizeof(float));
+	float snr=stateMachines[i].snr();
+	fplog.write((char *)&snr,sizeof(float));
+      }
+      for(int i=0;i<nDelaylines;i++)
+	fplog.write((char *)&baselinemovements[i],sizeof(float));
+    }
+    
   }
     
   return 0;
@@ -271,6 +329,10 @@ void parse_args(int argc, char *argv[]){
 	exit(EXIT_FAILURE);
       }
     }
+    else if(strcmp(argv[i],"--trackerlog")==0){
+      i++;
+      trackerlog=argv[i];
+    }
     else{
       std::cout << "unrecognized parameter: " << argv[i] << std::endl;
       exit(EXIT_FAILURE);
@@ -319,7 +381,7 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
     stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
   }
 	
-  baseline2delayline=Baseline2DelaylineLinear(s.size(),nD);
+  baseline2delayline=Baseline2DelaylineLinear(s.size(),nDelaylines);
   flag_resizetrackerstats=true;
 }
 

@@ -126,7 +126,7 @@ std::string FringeTrackerStateMachine::stateName(int state) const{
 }
 
 int FringeTrackerStateMachine::advance(){
-  //std::cout << delay << " " << snr << std::endl;
+  //std::cout << delay << " " << _snr << std::endl;
   if(c.onoff==OFF)
     _state=STATE_STOP;
   else{
@@ -140,7 +140,7 @@ int FringeTrackerStateMachine::advance(){
   if(_state==STATE_SEARCH){
     // Move delay lines in search pattern
     _move=0;
-    if(snr>c.snrFound){
+    if(_snr>c.snrFound){
       _state=STATE_FOUND;
       counter=0;
     }
@@ -162,7 +162,7 @@ int FringeTrackerStateMachine::advance(){
   else if(_state==STATE_FOUND){
     // Don't move delay, just confirm fringe sighting
     _move=0;
-    if(snr<c.snrLost){
+    if(_snr<c.snrLost){
       _state=STATE_SEARCH;
       counter=0;
       // Should we really reverse search step when going from FOUND to SEARCH?
@@ -180,7 +180,7 @@ int FringeTrackerStateMachine::advance(){
   }
   else if(_state==STATE_LOCK){
     // Move delay lines according to tracking information
-    if(snr<c.snrLost){
+    if(_snr<c.snrLost){
       _state=STATE_LOST;
       counter=0;
       _move=0;
@@ -194,7 +194,7 @@ int FringeTrackerStateMachine::advance(){
   else if(_state==STATE_LOST){
     // Don't move delay lines, wait for fringes to reappear
     _move=0;
-    if(snr>c.snrFound){
+    if(_snr>c.snrFound){
       _state=STATE_LOCK;
     }
     else{

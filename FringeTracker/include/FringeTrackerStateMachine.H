@@ -73,18 +73,19 @@ public:
   // State functions
   int nstates() const {return _stateNames.size();};
   int state() const {return _state;}; // current state
-  void loadDelay(const std::pair<float,float> &d){delay=d.first;snr=d.second;}; // Load the next delay
+  void loadDelay(const std::pair<float,float> &d){delay=d.first;_snr=d.second;};// Load the next delay
+  float snr(){return _snr;};
   int advance(); // Advance the state machine
   float movement() const {return _move;}; // Get the movement
 
   // Configuration functions
   void setConfig(const FringeTrackerStateMachineConfig &c_){c=c_;};
-  FringeTrackerStateMachineConfig getConfig() {return c;};
+  const FringeTrackerStateMachineConfig &getConfig() {return c;};
   void reset();
 private:
   FringeTrackerStateMachineConfig c; // state machine configuration
   float delay;
-  float snr;
+  float _snr;
   std::string _name; 
   int _state; // Current state
   std::vector<std::string> _stateNames;

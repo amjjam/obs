@@ -226,6 +226,8 @@ int main(int argc, char *argv[]){
   struct itimerval dt={{0,(long int)(interval*1000*sim2wall)},{1,0}};
   setitimer(ITIMER_REAL,&dt,nullptr);
   signal(SIGALRM,&frametimer_callback);
+
+  // For cleanling closing the log file on SIGTERM
   signal(SIGTERM,&sigterm_callback);
   
   amjTime T;
