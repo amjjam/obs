@@ -94,6 +94,20 @@ Delays<T> operator-(const Delays<T> &p, const Delays<U> &m){
   return r;  
 }
 
+template<class T, class U>
+Delays<T> operator+(const Delays<T> &p, const Delays<U> &m){
+  if(p.size()!=m.size()){
+    std::cerr << "operator+: dimensions mismatched: p("
+	      << p.size() << "), m(" << m.size() << ")" << std::endl;
+    abort();
+  }
+
+  Delays<T> r;
+  for(unsigned int i=0;i<p.size();i++)
+    r[i]=p[i]+m[i];
+  return r;
+}
+
 //template<>template<>
 //Delays<float> &Delays<float>::operator=(const Delays<double> &);
 
