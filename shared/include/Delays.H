@@ -22,7 +22,8 @@ public:
     for(unsigned int i=0;i<_d.size();i++)
       _d[i]=m[i];
   };
-  Delays(int n=0):_d(n,0){};
+  Delays(int n=0):_d(n){};
+  Delays(int n, T v):_d(n,v){};
   virtual ~Delays(){};
   unsigned int size() const {return _d.size();};
   void resize(unsigned int n){_d.resize(n);};
