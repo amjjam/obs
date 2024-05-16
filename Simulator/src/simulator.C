@@ -44,9 +44,12 @@ Help help({
     "  Number of milliseconds between frames. Default is 10.",
     "--externaldelaymodel <int> <string> <other parameters>",
     "  <int> i delay line number, 1 to delaylines",
-    "  <string> sin or cos",
+    "  <string> sin, cos, or square",
     "     <float> A amplitude in micrometers",
-    "     <float> T period in seconds",    
+    "     <float> T period in seconds",
+    "  <string> atm",
+    "     <float> time resolution in ms",
+    "     <float> coherence time in ms",
     "--sender-frames <string>",
     "  A message queue communicator for sending simulated frames.",
     "  Format: /<name>:nbuffers:buffersize."
@@ -62,12 +65,22 @@ Help help({
     "    <int32> nL",
     "    <double> L0",
     "    <double> L1",
-    " Then followed by one record for each frame produced",
-    " <int32> <int32> time frame is produced in s and ns",
-    " nD of:",
-    "   <double> delay line delay for each delay line",
-    " nD of:",
-    "   <double> external delay for each delay line",
+    "  nB of:",
+    "    <double> Nominal NV2 for each baseline at the start of the simulation",
+    "    This is computed with zero fringe delay",
+    "  Then followed by one record for each frame produced",
+    "    <int32> <int32> time frame is produced in s and ns",
+    "    <double> total number of photons in the frame",
+    "  nB of:",
+    "    <double> N total of photons for baseline",
+    "  nB of:",
+    "    <double> NV for each baseline",
+    "  nB of:",
+    "    <double> NV2 for each baseline",
+    "  nD of:",
+    "    <double> delay line delay for each delay line",
+    "  nD of:",
+    "    <double> external delay for each delay line",
     " (The fringe delay is the sum of delay line delay and external delay)",
     "--sim2wall <float>",
     "  The wall-clock time between frames is the internval multiplied by",
@@ -112,7 +125,7 @@ double interval=10; // in milliseconds
 double delaylinedelay=5; // in milliseconds
 //int timedelay=5000000; // In nanoseconds
 //int frameinterval=10; // in milliseconds
-double sim2wall; // Factor to multiply interval by to get wall clock interval
+double sim2wall=1; // Factor to multiply interval by to get wall clock interval
 std::string receiver_delaylines;
 std::string sender_phasors;
 std::string sender_phasors2;
@@ -175,16 +188,17 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
     }
 
-  Delays<double> totaldelays(nDelaylines),externaldelays(nDelaylines);
+  Delays<double> totaldelays(nDelaylines,0),delaylinedelays(nDelaylines),
+    externaldelays(nDelaylines);
 
   // Initialize the frame simulator
   std::vector<Beam> beams{
     Beam(0,13,[&totaldelays](double t)->double{return totaldelays[0];},
-	 [](double L)->double{return 0.02;}),
+	 [](double L)->double{return 0.002;}),
     Beam(26,13,[&totaldelays](double t)->double{return totaldelays[1];},
-	 [](double L)->double{return 0.02;}),
+	 [](double L)->double{return 0.002;}),
     Beam(78,13,[&totaldelays](double t)->double{return totaldelays[2];},
-	 [](double L)->double{return 0.02;})};
+	 [](double L)->double{return 0.002;})};
 
   std::vector<Baseline> baselines{
     Baseline("baseline1",beams[0],beams[1],
@@ -198,6 +212,10 @@ int main(int argc, char *argv[]){
   
   Frame<double> framed(nL,nF);
   Frame<uint16_t> frameu(nL,nF);
+  double nn;
+  std::vector<double> n;
+  std::vector<double> nv;
+  std::vector<double> nv2;
   
   long seed=1;
 
@@ -214,12 +232,16 @@ int main(int argc, char *argv[]){
       fpsimlog.write(baselines[i].name().c_str(),baselines[i].name().size()+1);
       j=i+1;
       fpsimlog.write((char *)&j,sizeof(int));
-      j++;
+      j=j+1;
+      if(j==4) j=1;
       fpsimlog.write((char *)&j,sizeof(int));
       fpsimlog.write((char *)&nL,sizeof(int));
       fpsimlog.write((char *)&L0,sizeof(double));
       fpsimlog.write((char *)&L1,sizeof(double));
     }
+    f.frame(0,framed,nn,n,nv,nv2);
+    for(int i=0;i<nBaselines;i++)
+      fpsimlog.write((char *)&nv2[i],sizeof(double));
   }
   
   // Start the timer
@@ -227,7 +249,7 @@ int main(int argc, char *argv[]){
   setitimer(ITIMER_REAL,&dt,nullptr);
   signal(SIGALRM,&frametimer_callback);
 
-  // For cleanling closing the log file on SIGTERM
+  // For cleanly closing the log file on SIGTERM
   signal(SIGTERM,&sigterm_callback);
   
   amjTime T;
@@ -255,19 +277,7 @@ int main(int argc, char *argv[]){
     delaylinedelays=delaylinesimulator.positions();
     m.unlock();
     externaldelays=externaldelaysimulator.delays();
-    // Write to file
-    if(fpsimlog.is_open()){
-      struct timespec t=T.toTimespec();
-      int32_t tt=t.tv_sec;
-      fpsimlog.write((char *)&t,sizeof(int32_t));
-      tt=t.tv_nsec;
-      fpsimlog.write((char *)&t,sizeof(int32_t));
-      for(int i=0;i<nDelaylines;i++)
-	fpsimlog.write((char *)&totaldelays[i],sizeof(double));
-      for(int i=0;i<nDelaylines;i++)
-	fpsimlog.write((char *)&externaldelays[i],sizeof(double));
-    }
-    totaldelays+=delayliiinedelays+externaldelays;
+    totaldelays=delaylinedelays+externaldelays;
     
     if(debug)
       std::cout << totaldelays << std::endl;
@@ -276,7 +286,7 @@ int main(int argc, char *argv[]){
       if(debug)
 	std::cout << "frame" << std::endl;
       clock_gettime(CLOCK_MONOTONIC,&t2);
-      f.frame(0,framed);
+      f.frame(0,framed,nn,n,nv,nv2);
       poisson<double,uint16_t>(framed,frameu,seed);
       clock_gettime(CLOCK_MONOTONIC,&t3);
       tt[i%100]=(t3.tv_sec-t2.tv_sec)+(double)(t3.tv_nsec-t2.tv_nsec)/1e9;
@@ -289,8 +299,24 @@ int main(int argc, char *argv[]){
 	  std::cout << "frame2" << std::endl;
 	senderf2.send(packetf);
       }
-      if(simlog.size()>0){
-	
+      // Write to file
+      if(fpsimlog.is_open()){
+	struct timespec t=T.toTimespec();
+	int32_t tt=t.tv_sec;
+	fpsimlog.write((char *)&tt,sizeof(int32_t));
+	tt=t.tv_nsec;
+	fpsimlog.write((char *)&tt,sizeof(int32_t));
+	fpsimlog.write((char *)&nn,sizeof(double));
+	for(unsigned int i=0;i<baselines.size();i++)
+	  fpsimlog.write((char *)&n[i],sizeof(double));
+	for(unsigned int i=0;i<baselines.size();i++)
+	  fpsimlog.write((char *)&nv[i],sizeof(double));
+	for(unsigned int i=0;i<baselines.size();i++)
+	  fpsimlog.write((char *)&nv2[i],sizeof(double));
+	for(int i=0;i<nDelaylines;i++)
+	  fpsimlog.write((char *)&totaldelays[i],sizeof(double));
+	for(int i=0;i<nDelaylines;i++)
+	  fpsimlog.write((char *)&externaldelays[i],sizeof(double));
       }
     }
   }
@@ -359,6 +385,8 @@ void parse_args(int argc, char *argv[]){
 	function=EXTERNALDELAYSIMULATOR_COS;
       else if(strcmp(argv[i],"square")==0)
 	function=EXTERNALDELAYSIMULATOR_SQUARE;
+      else if(strcmp(argv[i],"atm")==0)
+	function=EXTERNALDELAYSIMULATOR_ATM;
       else{
 	std::cout << "Simulator: unrecognized external delay model: "
 		  << argv[i] << std::endl;
