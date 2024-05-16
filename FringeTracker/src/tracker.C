@@ -40,19 +40,22 @@ Help help({
     "  The state machines should begin in the inactive state",
     "--trackerlog <string> a file into which the state machine state is logged",
     "  every time it executes. A header is written before the first record",
-    "  <int32> the number of baselines (N)",
-    "  <int32> the number of delaylines (M)",
-    "  N of",
+    "  <int32> the number of baselines (nB)",
+    "  <int32> the number of delaylines (nD)",
+    "  <int32> the number of states (nS), numbered 0 to K-1",
+    "  nB of",
     "    <string> null-terminated strings of each baseline name",
+    "  nS of",
+    "    <string> null-terminated strings of each state name",
     "  Each time the state machine runs",
     "  <int32> <int32> the time in s and ns in the last frame",
     "  <int32> <int32> the time of recording the state in s and ns",
-    "  N of",
+    "  nB of",
     "    <uint8> - the state (0 stop, 1, searching, 2 found, 3 locked, 4 lost)",
     "    <float> - the SNR found level",
     "    <float> - the SNR lost level",
     "    <float> - the current SNR",
-    "  M of",
+    "  nD of",
     "    <float> - the movement for each delay line"
     /* ======================================================================*/
   });
@@ -179,7 +182,7 @@ int main(int argc, char *argv[]){
   amjPacket packet;
   amjTime T;
 
-  // Open trackerlog
+  // Open trackerlog and write header information
   if(trackerlog.size()>0){
     fplog.open(trackerlog.c_str(),std::ios::binary|std::ios::out);
     int32_t nBaselines=stateMachines.size();
@@ -188,6 +191,9 @@ int main(int argc, char *argv[]){
     for(unsigned int i=0;i<stateMachines.size();i++)
       fplog.write((char *)stateMachines[i].name().c_str(),
 		  stateMachines[i].name().size()+1);
+    for(unsigned int i=0;i<stateMachines[0].nstates();i++)
+      fplog.write((char *)stateMachines[i].stateName(i).c_str(),
+		  sateMachines[i].stateName(i).size()+1);
   }
 
   // For cleanly closing the log file on SIGTERM
