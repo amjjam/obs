@@ -1,12 +1,15 @@
 #ifndef _EXTERNALDELAYSIMULATOR_H_
 #define _EXTERNALDELAYSIMULATOR_H_
 
+#include <amjAtmosphere.H>
+
 #include "../../shared/include/Delays.H"
 
 #define EXTERNALDELAYSIMULATOR_ZERO 0
 #define EXTERNALDELAYSIMULATOR_SIN 1
 #define EXTERNALDELAYSIMULATOR_COS 2
 #define EXTERNALDELAYSIMULATOR_SQUARE 3
+#define EXTERNALDELAYSIMULATOR_ATM 4
 
 class ExternalDelaySimulator{
 public:
@@ -17,6 +20,7 @@ public:
   Delays<double> &delays(const struct timespec &t={0,0});
 private:
   std::vector<int> _function;
+  std::vector<amjAtmosphere *> _atm;
   std::vector<std::vector<double> > params;
   Delays<double> _delays;
   struct timespec start;

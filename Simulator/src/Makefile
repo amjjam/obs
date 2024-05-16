@@ -8,7 +8,7 @@ ifndef LIB
 	LIB=-L/opt/amj/lib
 endif
 
-LIBS = -lamjCom -lamjFourier -lamjInterferometry -lamjTime
+LIBS = -lamjCom -lamjFourier -lamjInterferometry -lamjTime -lamjRandom -lamjAtmosphere
 LDFLAGS = $(LIB)
 
 FLAGS=-Wall -g $(INC)

@@ -12,6 +12,7 @@ ExternalDelaySimulator::ExternalDelaySimulator(int n, struct timespec _start){
 
 void ExternalDelaySimulator::resize(int n){
   _function.resize(n,EXTERNALDELAYSIMULATOR_ZERO);
+  _atm.resize(n,nullptr);
   params.resize(n,{});
   _delays.resize(n);
 }
@@ -19,6 +20,12 @@ void ExternalDelaySimulator::resize(int n){
 void ExternalDelaySimulator::function(int i, int f, std::vector<double> &p){
   _function[i]=f;
   params[i]=p;
+  if(f==EXTERNALDELAYSIMULATOR_ATM){
+    std::cout << "atm" << std::endl;
+    amjRandom *random=new amjRandom(-(i+1));
+    _atm[i]=new amjAtmosphere(random,params[i][0],params[i][1],100000,
+			      AMJATMOSPHERE_MODE_ZERO);
+  }
 }
 
 Delays<double> &ExternalDelaySimulator::delays(const struct timespec &t){
@@ -32,6 +39,10 @@ Delays<double> &ExternalDelaySimulator::delays(const struct timespec &t){
       _delays[i]=params[i][0]*cos(2*M_PI*T/params[i][1]);
     else if(_function[i]==EXTERNALDELAYSIMULATOR_SQUARE)
       _delays[i]=params[i][0]*(((int)(2*T/params[i][1])%2)*2-1);
+    else if(_function[i]==EXTERNALDELAYSIMULATOR_ATM){
+      _delays[i]=_atm[i]->get(T*1000);
+      //std::cout << "atm " << i << " " << _delays[i] << " " << T << std::endl;
+    }
     else{
       std::cout << "ExternalDelaySimulator: unrecognized function: "
 		<< _function[i] << std::endl;
