@@ -20,7 +20,7 @@ Help help({
     "  <int> is the number of delaylines, <string> is the communicator",
     "--delaylog <string> file to write a running log of delay to",
     "  It contains a header:",
-    "  <int32> - the number of baselines",
+    "  <int32> - the number of delay lines",
     "  Each time a delay update is received a record is written",
     "  <int32> <int32> the time in s and ns in the delay packet",
     "  <int32> <int32> the current time in s and ns",
