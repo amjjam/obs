@@ -22,7 +22,7 @@ void ExternalDelaySimulator::function(int i, int f, std::vector<double> &p){
   params[i]=p;
   if(f==EXTERNALDELAYSIMULATOR_ATM){
     std::cout << "atm" << std::endl;
-    amjRandom *random=new amjRandom(-(i+1));
+    amjRandom *random=new amjRandom(-(i+6)); // 6 7 2
     _atm[i]=new amjAtmosphere(random,params[i][0],params[i][1],100000,
 			      AMJATMOSPHERE_MODE_ZERO);
   }
