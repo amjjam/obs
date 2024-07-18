@@ -2,7 +2,11 @@
   procssor [--receiver <string>] [--tracker <string>]
   
   --receiver-frames <string>
-    Specifies a communicator for listening for data frames
+    Specifies a communicator for listening for data frames. Shared memory.
+    <name>:<nbuffers>:<size>
+    <name> is /<text> name of the shared memory and of a semphore
+    <nbuffers> number of buffers
+    <size> size of each buffer
   --sender-tracker <string>
     Specifies a communicator to the tracker
   --sender-phasorviewer <string>
@@ -35,7 +39,7 @@
 #include <time.h>
 
 #include <amjCom/amjComUDP.H>
-#include <amjCom/amjComMQ.H>
+#include <amjCom/amjComSHM.H>
 
 #include <amjFourier.H>
 #include <amjTime.H>
@@ -62,7 +66,7 @@ bool debug=false;
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
   
-  amjComEndpointMQ r(receiver_frames,"");
+  amjComEndpointSHM r(receiver_frames,"");
   amjComEndpointUDP s("",sender_tracker);
   amjComEndpointUDP p("",sender_phasorviewer);
   
