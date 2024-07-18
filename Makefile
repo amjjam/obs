@@ -89,13 +89,15 @@ dist_gather:
 #	git clone git@github.com:amjjam/obs.git $(prefix_dist)
 	mkdir $(prefix_dist)/packages
 	git clone git@github.com:amjjam/amjCom.git $(prefix_packages)/amjCom
-	(cd $(prefix_packages)/amjCom; git checkout tags/v0.2.0 --quiet)
+	(cd $(prefix_packages)/amjCom; git checkout tags/v0.3.0 --quiet)
 	git clone git@github.com:amjjam/amjInterferometry.git $(prefix_packages)/amjInterferometry
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
+	(cd $(prefix_packages)/amjFourier; git checkout tags/v0.10 --quiet)
 	git clone git@github.com:amjjam/amjTime.git $(prefix_packages)/amjTime
 	git clone git@github.com:amjjam/amjChart.git $(prefix_packages)/amjChart
 	git clone git@github.com:amjjam/QCustomPlot.git $(prefix_packages)/QCustomPlot
 	git clone git@github.com:amjjam/amjWidgets.git $(prefix_packages)/amjWidgets
+	git clone git@github.com:amjjam/amjAtmosphere.git $(prefix_packages)/amjAtmosphere
 
 # Remove .git directories
 dist_degit:

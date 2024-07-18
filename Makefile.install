@@ -16,6 +16,7 @@ packages_install: packages
 	$(MAKE) -C packages/amjTime/src install
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets install
+	$(MAKE) -C packages/amjAtmosphere/src install
 
 packages_uninstall:
 	$(MAKE) -C packages/QCustomPlot -f Makefile.anders uninstall
@@ -28,6 +29,7 @@ packages_uninstall:
 	$(MAKE) -C packages/amjTime/src uninstall
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets uninstall
+	$(MAKE) -C packages/amjAtmosphere/src uninstall
 
 packages_clean:
 	$(MAKE) -C packages/QCustomPlot -f Makefile.anders clean
@@ -40,4 +42,6 @@ packages_clean:
 	$(MAKE) -C packages/amjTime/src clean
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets clean
+	$(MAKE) -C packages/amjAtmosphere/src clean
+	
 
