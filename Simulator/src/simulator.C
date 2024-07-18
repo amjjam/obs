@@ -17,16 +17,20 @@ Help help({
     "--delaylines <int>",
     "  The number of delay lines. Default 6. This should be specified on the",
     "  command line before any instances of --externaldelaymodel",
+    "--beamirradiances <double> x nBeams",
+    "  The peak irradiance in counts per pixel for each beam. The number of",
+    "  values must be at least as many as there are beams. Defaults: 1",
     "--timedelay <int>",
     "  The time delay of the delay lines, in ms",
     "--receiver-delaylines <string>",
     "  A communicator for receiving delay line commands.",
     "--sender-phasors <string>",
-    "  A communicator for sending simulated phasors.",
+    "  A communicator for sending simulated phasors. UDP.",
     "--sender-phasors2 <string> <int>",
     "  A second communicator for sending simulated phasors, together with a",
     "  time-interval in ms. A packet will only be sent via this communicator",
     "  if the time-interval has elapsed since the most recent send",
+    "  (message queue)",
     "--framesize nL nF - number of pixels in wavelength and in fringe direction",
     "--wavelengthrange L0 L1 - From L0 (lowest L bin) to L1, in microns",
     "--baseline name dl- dl+ nL L0 L1 A S seed",
@@ -51,10 +55,10 @@ Help help({
     "     <float> time resolution in ms",
     "     <float> coherence time in ms",
     "--sender-frames <string>",
-    "  A message queue communicator for sending simulated frames.",
+    "  A shared memory for sending simulated frames.",
     "  Format: /<name>:nbuffers:buffersize."
     "--sender-frames2 <string> <int>",
-    "  A message queue communicator for sending every <int> simulated frame.",
+    "  A shared memory communicator for sending every <int> simulated frame.",
     "--simlog <string> a file into which the simulator log is written",
     "  <int> the number of delaylines (nD)",
     "  <int> the number of baselines (nB)",
@@ -107,6 +111,7 @@ Help help({
 
 #include <amjCom/amjComUDP.H>
 #include <amjCom/amjComMQ.H>
+#include <amjCom/amjComSHM.H>
 #include <amjFourier.H>
 #include <amjTime.H>
 
@@ -121,6 +126,7 @@ void *receiverdelaylines(void *d);
 void send2(amjPacket &p, amjComEndpointUDP &s);
 
 int nDelaylines=6;
+std::vector<double> beamirradiances(3,1);
 double interval=10; // in milliseconds
 double delaylinedelay=5; // in milliseconds
 //int timedelay=5000000; // In nanoseconds
@@ -175,8 +181,8 @@ int main(int argc, char *argv[]){
 					delaylinedelay*1000000*sim2wall);
   amjComEndpointUDP sender("",sender_phasors);
   amjComEndpointUDP sender2("",sender_phasors2);
-  amjComEndpointMQ senderf("",sender_frames);
-  amjComEndpointMQ senderf2("",sender_frames2);
+  amjComEndpointSHM senderf("",sender_frames);
+  amjComEndpointSHM senderf2("",sender_frames2);
   amjPacket packet,packetf;
   
   // Create a thread to receive delays
@@ -194,11 +200,11 @@ int main(int argc, char *argv[]){
   // Initialize the frame simulator
   std::vector<Beam> beams{
     Beam(0,13,[&totaldelays](double t)->double{return totaldelays[0];},
-	 [](double L)->double{return 0.002;}),
+	 [](double L)->double{return beamirradiances[0];}),
     Beam(26,13,[&totaldelays](double t)->double{return totaldelays[1];},
-	 [](double L)->double{return 0.002;}),
+	 [](double L)->double{return beamirradiances[1];}),
     Beam(78,13,[&totaldelays](double t)->double{return totaldelays[2];},
-	 [](double L)->double{return 0.002;})};
+	 [](double L)->double{return beamirradiances[2];})};
 
   std::vector<Baseline> baselines{
     Baseline("baseline1",beams[0],beams[1],
@@ -208,7 +214,9 @@ int main(int argc, char *argv[]){
     Baseline("baseline3",beams[2],beams[0],
 	     [](double L)->std::complex<double>{return 1;})};
   
-  FourierSim f(beams,baselines,nL,nF);
+  FourierSim f(beams,baselines,nL,nF,
+	       [](int i)->double{return 1/(1+(1/2.5-1)/nL*i);},
+	       [](int i)->double{return (1/(1+(1/2.5-1)/nL*(i+1))-1/(1+(1/2.5-1)/nL*(i-1)));});
   
   Frame<double> framed(nL,nF);
   Frame<uint16_t> frameu(nL,nF);
@@ -333,6 +341,13 @@ void parse_args(int argc, char *argv[]){
       i++;
       nDelaylines=atoi(argv[i]);
     }
+    if(strcmp(argv[i],"--beamirradiances")==0){
+      beamirradiances.clear();
+      i++;
+      for(;i<argc&&argv[i][0]!='-';i++)
+	beamirradiances.push_back(atof(argv[i]));
+      i--;
+    }
     else if(strcmp(argv[i],"--timedelay")==0){
       i++;
       delaylinedelay=atof(argv[i]);
@@ -396,7 +411,7 @@ void parse_args(int argc, char *argv[]){
       i++;
       params.push_back(atof(argv[i]));
       i++;
-      params.push_back(atof(argv[i]));
+      params.push_back(atof(argv[i])*sim2wall);
       externaldelaysimulator.function(index,function,params);
     }
     else if(strcmp(argv[i],"--sender-frames")==0){
