@@ -129,7 +129,7 @@ int main(int argc, char *argv[]){
       a=tt.tv_nsec;
       fplog.write((char *)&a,sizeof(int32_t));
       delays=delaylineinterface->pos();
-      for(int i=0;i<delays.size();i++)
+      for(unsigned int i=0;i<delays.size();i++)
 	fplog.write((char *)&delays[i],sizeof(double));
     }
   }
