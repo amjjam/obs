@@ -18,10 +18,10 @@ public:
   virtual Delays<double> pos(int i=0);
 private:
   unsigned int ndelaylines;
-  amjComEndpointUDP s;
-  amjPacket p;
   Delays<double> plocal;
   Delays<double> pdl;
+  amjComEndpointUDP s;
+  amjPacket p;
 };
 
 #endif /* _DELAYLINEINTERFACESIMULATOR_H_ */
