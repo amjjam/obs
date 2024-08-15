@@ -191,9 +191,9 @@ int main(int argc, char *argv[]){
     for(unsigned int i=0;i<stateMachines.size();i++)
       fplog.write((char *)stateMachines[i].name().c_str(),
 		  stateMachines[i].name().size()+1);
-    for(unsigned int i=0;i<stateMachines[0].nstates();i++)
-      fplog.write((char *)stateMachines[i].stateName(i).c_str(),
-		  sateMachines[i].stateName(i).size()+1);
+    for(int i=0;i<stateMachines[0].nstates();i++)
+      fplog.write((char *)stateMachines[0].stateName(i).c_str(),
+		  stateMachines[0].stateName(i).size()+1);
   }
 
   // For cleanly closing the log file on SIGTERM
