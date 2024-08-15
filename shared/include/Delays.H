@@ -103,7 +103,7 @@ Delays<T> operator+(const Delays<T> &p, const Delays<U> &m){
     abort();
   }
 
-  Delays<T> r;
+  Delays<T> r(p.size());
   for(unsigned int i=0;i<p.size();i++)
     r[i]=p[i]+m[i];
   return r;
