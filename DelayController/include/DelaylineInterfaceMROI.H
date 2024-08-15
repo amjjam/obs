@@ -2,6 +2,7 @@
 #define _DELAYLINEINTERFACEMROI_H_
 
 #include <mutex>
+#include <thread>
 
 #include <amjCom/amjComUDP.H>
 
@@ -34,8 +35,7 @@ typedef struct{
 
 class DelaylineInterfaceMROI:public DelaylineInterface<float,double>{
 public:
-  DelaylineInterfaceMROI(unsigned int ndelaylines, std::string sender,
-			 std::string receiver);
+  DelaylineInterfaceMROI(unsigned int ndelaylines, std::string sender,std::string receiver);
   ~DelaylineInterfaceMROI(){};
   virtual void move(const Delays<float> &);
   virtual void moveto(const Delays<double> &);
@@ -45,18 +45,17 @@ public:
 private:
   std::mutex m;
   void send();
-  void receive();
+  void receive_thread();
   template<class T>
   void check_dimensions(const Delays<T> &);
   unsigned int ndelaylines;
   Delays<double> plocal;
   Delays<double> pdl;
   amjComEndpointUDP c;
+  std::thread t;
   amjPacket ps;
   amjPacket pr;
   FringeOffset offsets[MAX_DLS];
-  DelayLinePosition positions[MAX_DLS];
 };
 
 #endif /* _DELAYLINEINTERFACEMROI_H_ */
-

@@ -4,7 +4,7 @@ DelaylineInterfaceMROI::DelaylineInterfaceMROI(unsigned int ndelaylines,
 					       std::string sender,
 					       std::string receiver):
   ndelaylines(ndelaylines),plocal(ndelaylines),pdl(ndelaylines),
-  c(receiver,sender){
+  c(receiver,sender),t(&DelaylineInterfaceMROI::receive_thread,this){
   if(ndelaylines>MAX_DLS){
     std::cout << "DelaylineInterfaceMROI: ndelaylines=" << ndelaylines
 	      << " larger than MAX_DLS=" << MAX_DLS << std::endl;
@@ -16,11 +16,6 @@ DelaylineInterfaceMROI::DelaylineInterfaceMROI(unsigned int ndelaylines,
     if(i<ndelaylines)
       offsets[i].isValid=1;
   }
-  
-  /* .isValid=1, .epoch=0 or .epoch=now?, what about .isSearching? */
-
-  /* start a receiver thread */
-
 };
 
 void DelaylineInterfaceMROI::move(const Delays<float> &delays){
@@ -73,14 +68,19 @@ void DelaylineInterfaceMROI::send(){
   c.send(ps);
 }
 
-void DelaylineInterfaceMROI::receive(){
-  c.receive(pr);
-  memcpy(positions,pr.read(sizeof(DelayLinePosition)*MAX_DLS),
-	 sizeof(DelayLinePosition)*MAX_DLS);
-  m.lock();
-  for(unsigned int i=0;i<ndelaylines;i++)
-    pdl[i]=positions[i].position[0]*1e6;
-  m.unlock();
+void DelaylineInterfaceMROI::receive_thread(){
+  std::cout << "receive_thread: started" << std::endl;
+  DelayLinePosition positions[MAX_DLS];
+  for(;;){
+    c.receive(pr);
+    std::cout << "receive_thread: packet received" << std::endl;
+    memcpy(positions,pr.read(sizeof(DelayLinePosition)*MAX_DLS),
+	   sizeof(DelayLinePosition)*MAX_DLS);
+    m.lock();
+    for(unsigned int i=0;i<ndelaylines;i++)
+      pdl[i]=positions[i].position[MAX_DLS-1]*1e6;
+    m.unlock();
+  }
 }
 
 template<class T>
