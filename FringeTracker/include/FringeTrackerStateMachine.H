@@ -24,7 +24,7 @@ public:
 				  float searchAMin=3,
 				  float searchAMax=5000,
 				  float step=3, float factor=1.5,
-				  float maxGD=2, float gain=0.01);
+				  float maxGD=10, float gain=0.1);
   ~FringeTrackerStateMachineConfig(){};
   int onoff;
   float snrFound;
