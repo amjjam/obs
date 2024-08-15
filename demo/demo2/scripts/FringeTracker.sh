@@ -2,7 +2,7 @@
 
 export LD_LIBRARY_PATH=/opt/amjCom/lib:/opt/amj/lib
 
-../../../FringeTracker/src/tracker --active 1 \
+../../../FringeTracker/src/FringeTracker --active 1 \
 	  --baseline baseline1 64 1 2.5 4 5 1 \
 	  --baseline baseline2 64 1 2.5 4 5 1 \
 	  --receiver-phasors 127.0.0.1:27001 \
