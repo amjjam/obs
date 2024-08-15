@@ -30,9 +30,9 @@ FrameViewer::~FrameViewer(){
 void FrameViewer::receive(amjPacket p){
   std::cout << "Frameviewer::receive" << std::endl;
   receiver->start();
-  Frame<uint16_t> frame(64,64);
+  Frame<uint16_t> frame(256,320);
   p >> frame;
-  QImage image(64,64,QImage::Format_RGB888);
+  QImage image(256,320,QImage::Format_RGB888);
   int sum=0;
   QColor c;//=QColor(frame[iL][iF],frame[iL][iF],frame[iL][iF]);
   for(unsigned int iL=0;iL<frame.nL();iL++)
@@ -47,7 +47,7 @@ void FrameViewer::receive(amjPacket p){
 }
 
 void Receiver::run(){
-  amjComEndpointMQ r("/frameviewer:2:10000","");
+  amjComEndpointMQ r("/frameviewer:2:200000","");
   amjPacket p;
   r.receive(p);
   std::cout << "got one" << std::endl;
