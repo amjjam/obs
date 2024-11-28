@@ -34,6 +34,8 @@ Help help({
     "--sender-tracker-controller <string> <int>",
     "  Specifies a communicator for sending tracker status (first), and an",
     "  interval in ms (second)",
+    "--sender-tracker-snr <string>",
+    "  Specifies a communicator for sending SNR",
     "--active <int>",
     "  <int> the state machines should begin in the active (1) or inactive (0)",
     "  state. Default is inactive (0).",
@@ -93,6 +95,7 @@ void* sample_tracker_stats(void *);
 void resizetrackerstats();
 void *tracker_controller_receiver(void *);
 void *tracker_controller_sender(void *);
+void send2SNRViewer(std::vector<DelayMachineGD> &);
 
 std::string receiver_phasors;
 std::string sender_movements;
@@ -104,6 +107,7 @@ unsigned int sender_tracker_stats_report_interval;
 std::string receiver_tracker_controller;
 std::string sender_tracker_controller;
 unsigned int sender_tracker_controller_interval;
+std::string sender_tracker_snr="127.0.0.1:27011";
 
 int nDelaylines=6;
 int stateMachineTSample=10;
@@ -175,11 +179,14 @@ int main(int argc, char *argv[]){
       perror("could not start thread_tracker_controller_sender");
       exit(EXIT_FAILURE);
     }
-  
+
+  std::cout << "sender_tracker_snr=" << sender_tracker_snr << std::endl;
   amjComEndpointUDP r(receiver_phasors,"");
   amjComEndpointUDP s("",sender_movements);
+  amjComEndpointUDP ssnr("",sender_tracker_snr);
   
   amjPacket packet;
+  amjPacket packetSNRViewer;
   amjTime T;
 
   // Open trackerlog and write header information
@@ -219,7 +226,19 @@ int main(int argc, char *argv[]){
     // Load phasors into delay machines
     for(unsigned int i=0;i<phasors.size();i++)
       delayMachines[i].load(phasors[i]);
-    
+
+    // Send SNR to SNRViewer
+    packetSNRViewer.clear();
+    T.write(packetSNRViewer.write(T.size()));
+    int nValues=delayMachines.size();
+    float snr;
+    memcpy(packetSNRViewer.write(sizeof(int)),&nValues,sizeof(int));
+    for(int i=0;i<nValues;i++){
+      snr=delayMachines[i].delay().second;
+      memcpy(packetSNRViewer.write(sizeof(float)),&snr,sizeof(float));
+    }
+    ssnr.send(packetSNRViewer);
+      
     // Load delays into state machines
     for(unsigned int i=0;i<delayMachines.size();i++){
       stateMachines[i].loadDelay(delayMachines[i].delay());
@@ -322,6 +341,10 @@ void parse_args(int argc, char *argv[]){
       sender_tracker_controller=argv[i];
       i++;
       sender_tracker_controller_interval=atoi(argv[i]);
+    }
+    else if(strcmp(argv[i],"--sender-tracker-snr")==0){
+      i++;
+      sender_tracker_snr=argv[i];
     }
     else if(strcmp(argv[i],"--active")==0){
       i++;
