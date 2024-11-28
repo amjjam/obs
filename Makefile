@@ -5,6 +5,7 @@ QMAKE=qmake
 
 SUBDIRS_OBS := DataProcessor/src DelayController/src \
   DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
+  SNRViewer/SNRViewer \
   FringeTracker/src FringeTrackerViewer/FringeTrackerViewer \
   PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
   Simulator/src TrackerController/TrackerController Obs/Obs obs_script
@@ -24,6 +25,10 @@ DelaylineViewer/DelaylineViewer:
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 FrameViewer/FrameViewer:
+	(cd $@; $(QMAKE) )
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+SNRViewer/SNRViewer:
 	(cd $@; $(QMAKE) )
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
