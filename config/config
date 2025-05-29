@@ -17,6 +17,9 @@ PHASORVIEWER = --baseline baseline1 64 1 2.5 --baseline baseline2 64 1 2.5
 # Simulator
 SIMULATOR = --framesize 64 64 --baseline baseline1 1 2 200 1 2.5 1 1 1 --baseline baseline2 2 3 250 1.5 3 1 1 2 --externaldelaymodel 2 square 50 30 --externaldelaymodel 3 cos 50 30
 
+# SNRViewer
+SNRVIEWER = --nbaselines 2
+
 # Number of delay lines (including non-operational)
 #NDELAYLINES = 6
 
