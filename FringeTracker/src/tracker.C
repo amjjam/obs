@@ -229,6 +229,7 @@ int main(int argc, char *argv[]){
 
     // Send SNR to SNRViewer
     packetSNRViewer.clear();
+    T.now(); // Remove this line later 
     T.write(packetSNRViewer.write(T.size()));
     int nValues=delayMachines.size();
     float snr;
