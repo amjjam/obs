@@ -75,6 +75,11 @@ void sigterm_callback(int s){
   exit(0);
 }
 
+std::vector<pSession> sessions;
+void callback_session(pSession){
+  
+}
+
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
@@ -89,6 +94,9 @@ int main(int argc, char *argv[]){
   amjComEndpointUDP r(receiver_movements,"");
   amjComEndpointUDP s("",sender_delaylines);
   amjPacket p;
+
+  amjCom::TCP::Server(":27012",callback_session);
+  
   delays.resize(nDelaylines);
   movements.resize(nDelaylines);
   amjTime T,TT;
