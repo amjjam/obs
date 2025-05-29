@@ -81,6 +81,10 @@ int main(int argc, char *argv[]){
   timespec ts0,ts1;
   clock_gettime(CLOCK_MONOTONIC,&ts0);
   amjTime T;
+  /* for frame counting */
+  int counter=0;
+  amjTime T0;
+  T0.now();
   for(int i=0;;i++){
     // Wait for packet
     r.receive(fpacket);
@@ -92,6 +96,13 @@ int main(int argc, char *argv[]){
     fpacket.reset();
     T.read(fpacket.read(T.size()));
     fpacket >> frame;
+
+    counter++;
+    if(T-T0>1){
+      std::cout << counter << "frames/s" << std::endl;
+      counter=0;
+      T0.now();
+    }
     
     // Process frame
     compute.phasors(frame,phasors);
