@@ -46,7 +46,10 @@ void SNRViewer::receive(){
       std::cout << "datagram.size()=" << datagram.data().size() << std::endl;
       packet.clear();
       packet.resize(datagram.data().size());
-      memcpy(packet._data(),datagram.data(),datagram.data().size());
+      memcpy(packet._data(),datagram.data().data(),datagram.data().size());
+      for(int i=0;i<datagram.data().size();i++)
+        std::cout << (int)datagram.data()[i] << ", ";
+      std::cout << std::endl;
       T.read(packet.read(T.size()));
       memcpy(&nValues,packet.read(sizeof(int)),sizeof(int));
       if(nValues!=nBaselines){
@@ -55,6 +58,11 @@ void SNRViewer::receive(){
       }
       values.resize(nValues);
       memcpy(&values[0],packet.read(nValues*sizeof(float)),nValues*sizeof(float));
+      std::cout << "time: " << T.yr() << "/" << T.mo() << "/" << T.dy() << " " << T.hr() << ":" << T.mn() << ":" << T.se() << std::endl;
+      std::cout << "values: ";
+      for(int i=0;i<nValues;i++)
+        std::cout << values[i] << ", ";
+      std::cout << std::endl;
       ui->chart->append(QDateTime(QDate(T.yr(),T.mo(),T.dy()),QTime(T.hr(),T.mn(),T.se(),T.ns()/1000000),QTimeZone::utc()),QVector<double>(values.begin(),values.end()));
   }
 }
