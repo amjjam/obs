@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>654</width>
-    <height>511</height>
+    <width>602</width>
+    <height>510</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,56 +15,51 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="2" column="1" alignment="Qt::AlignVCenter">
-     <widget class="QCheckBox" name="checkBox_DataProcessor">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
+    <item row="19" column="2">
+     <widget class="amjLED" name="amjLED_Simulator" native="true"/>
     </item>
     <item row="8" column="2">
      <widget class="amjLED" name="amjLED_TrackerController" native="true"/>
     </item>
-    <item row="9" column="0">
-     <widget class="Line" name="line_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
+    <item row="22" column="4" colspan="3">
+     <widget class="QLineEdit" name="lineEdit_ConfigFile"/>
+    </item>
+    <item row="2" column="2" alignment="Qt::AlignVCenter">
+     <widget class="amjLED" name="amjLED_DataProcessor" native="true"/>
     </item>
     <item row="20" column="2">
-     <widget class="QToolButton" name="toolButton_ConfigFile">
+     <widget class="amjLED" name="amjLED_SimulatorController" native="true"/>
+    </item>
+    <item row="14" column="0">
+     <widget class="QLabel" name="label_PhasorViewer">
       <property name="text">
-       <string>...</string>
+       <string>Phasor Viewer</string>
       </property>
      </widget>
     </item>
-    <item row="20" column="0" colspan="2">
-     <widget class="QLabel" name="label_13">
-      <property name="text">
-       <string>Configuration file:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-      </property>
-     </widget>
-    </item>
-    <item row="13" column="0">
-     <widget class="QLabel" name="label_PowerSpectrumViewer">
-      <property name="text">
-       <string>Power Spectrum Viewer</string>
-      </property>
-     </widget>
-    </item>
-    <item row="18" column="1">
-     <widget class="QCheckBox" name="checkBox_SimulatorController">
+    <item row="10" column="1">
+     <widget class="QCheckBox" name="checkBox_FringeTrackerViewer">
       <property name="text">
        <string/>
       </property>
      </widget>
     </item>
-    <item row="4" column="2">
-     <widget class="amjLED" name="amjLED_DelayController" native="true"/>
+    <item row="12" column="1">
+     <widget class="QCheckBox" name="checkBox_DelayLineViewer">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLineEdit" name="lineEdit"/>
+    </item>
+    <item row="8" column="0">
+     <widget class="QLabel" name="label_TrackerController">
+      <property name="text">
+       <string>Tracker Controller</string>
+      </property>
+     </widget>
     </item>
     <item row="5" column="0">
      <widget class="QLabel" name="label">
@@ -73,53 +68,58 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QCheckBox" name="checkBox_FringeTracker">
+    <item row="11" column="1">
+     <widget class="QCheckBox" name="checkBox_FrameViewer">
       <property name="text">
        <string/>
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
-     <widget class="QCheckBox" name="checkBox_DelayController">
+    <item row="13" column="1">
+     <widget class="QCheckBox" name="checkBox_PowerSpectrumViewer">
       <property name="text">
        <string/>
       </property>
      </widget>
     </item>
-    <item row="18" column="2">
-     <widget class="amjLED" name="amjLED_SimulatorController" native="true"/>
-    </item>
-    <item row="20" column="4" colspan="3">
-     <widget class="QLineEdit" name="lineEdit_ConfigFile"/>
-    </item>
-    <item row="2" column="0" alignment="Qt::AlignVCenter">
-     <widget class="QLabel" name="label_DataProcessor">
+    <item row="2" column="5">
+     <widget class="QCheckBox" name="checkBox_stderr">
       <property name="text">
-       <string>Data Processor</string>
+       <string>stderr</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
       </property>
      </widget>
     </item>
-    <item row="19" column="0">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
+    <item row="4" column="2">
+     <widget class="amjLED" name="amjLED_DelayController" native="true"/>
     </item>
-    <item row="15" column="0">
-     <widget class="QLabel" name="label_DelayCommander">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
+    <item row="20" column="1">
+     <widget class="QCheckBox" name="checkBox_SimulatorController">
       <property name="text">
-       <string>Delay Commander</string>
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="11" column="0">
+     <widget class="QLabel" name="label_FrameViewer">
+      <property name="text">
+       <string>Frame Viewer</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1" alignment="Qt::AlignVCenter">
+     <widget class="QCheckBox" name="checkBox_DataProcessor">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_FringeTracker">
+      <property name="text">
+       <string>Fringe Tracker</string>
       </property>
      </widget>
     </item>
@@ -136,68 +136,82 @@
       </property>
      </spacer>
     </item>
-    <item row="15" column="1">
-     <widget class="QCheckBox" name="checkBox_DelayCommander">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
-    </item>
     <item row="11" column="2">
      <widget class="amjLED" name="amjLED_FrameViewer" native="true"/>
     </item>
-    <item row="17" column="2">
-     <widget class="amjLED" name="amjLED_Simulator" native="true"/>
+    <item row="10" column="0">
+     <widget class="QLabel" name="label_FringeTrackerViewer">
+      <property name="text">
+       <string>Fringe Tracker Viewer</string>
+      </property>
+     </widget>
     </item>
-    <item row="13" column="1">
-     <widget class="QCheckBox" name="checkBox_PowerSpectrumViewer">
+    <item row="3" column="2">
+     <widget class="amjLED" name="amjLED_FringeTracker" native="true"/>
+    </item>
+    <item row="13" column="0">
+     <widget class="QLabel" name="label_PowerSpectrumViewer">
+      <property name="text">
+       <string>Power Spectrum Viewer</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <widget class="QCheckBox" name="checkBox_TrackerController">
       <property name="text">
        <string/>
       </property>
      </widget>
     </item>
-    <item row="12" column="2">
-     <widget class="amjLED" name="amjLED_DelayLineViewer" native="true"/>
-    </item>
-    <item row="15" column="2">
-     <widget class="amjLED" name="amjLED_DelayCommander" native="true"/>
-    </item>
-    <item row="2" column="5">
-     <widget class="QCheckBox" name="checkBox_stderr">
-      <property name="text">
-       <string>stderr</string>
+    <item row="21" column="0">
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
-      <property name="checked">
-       <bool>true</bool>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
       </property>
-     </widget>
+     </spacer>
     </item>
-    <item row="21" column="2">
+    <item row="10" column="2">
+     <widget class="amjLED" name="amjLED_FringeTrackerViewer" native="true"/>
+    </item>
+    <item row="23" column="2">
      <widget class="QToolButton" name="toolButton_LogFile">
       <property name="text">
        <string>...</string>
       </property>
      </widget>
     </item>
-    <item row="16" column="0">
-     <widget class="Line" name="line_3">
+    <item row="9" column="0">
+     <widget class="Line" name="line_2">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
      </widget>
     </item>
-    <item row="14" column="2">
-     <widget class="amjLED" name="amjLED_PhasorViewer" native="true"/>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_DelayController">
+    <item row="4" column="1">
+     <widget class="QCheckBox" name="checkBox_DelayController">
       <property name="text">
-       <string>Delay Controller</string>
+       <string/>
       </property>
      </widget>
     </item>
-    <item row="10" column="1">
-     <widget class="QCheckBox" name="checkBox_FringeTrackerViewer">
+    <item row="22" column="0" colspan="2">
+     <widget class="QLabel" name="label_13">
+      <property name="text">
+       <string>Configuration file:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="19" column="1">
+     <widget class="QCheckBox" name="checkBox_Simulator">
       <property name="text">
        <string/>
       </property>
@@ -210,13 +224,27 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="2" alignment="Qt::AlignVCenter">
-     <widget class="amjLED" name="amjLED_DataProcessor" native="true"/>
+    <item row="14" column="1">
+     <widget class="QCheckBox" name="checkBox_PhasorViewer">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+    <item row="23" column="4" colspan="3">
+     <widget class="QLineEdit" name="lineEdit_LogFile"/>
     </item>
     <item row="13" column="2">
      <widget class="amjLED" name="amjLED_PowerSpectrumViewer" native="true"/>
     </item>
-    <item row="21" column="0" colspan="2">
+    <item row="22" column="2">
+     <widget class="QToolButton" name="toolButton_ConfigFile">
+      <property name="text">
+       <string>...</string>
+      </property>
+     </widget>
+    </item>
+    <item row="23" column="0" colspan="2">
      <widget class="QLabel" name="label_14">
       <property name="text">
        <string>Log file:</string>
@@ -226,13 +254,17 @@
       </property>
      </widget>
     </item>
-    <item row="21" column="4" colspan="3">
-     <widget class="QLineEdit" name="lineEdit_LogFile"/>
-    </item>
-    <item row="17" column="1">
-     <widget class="QCheckBox" name="checkBox_Simulator">
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_DelayController">
       <property name="text">
-       <string/>
+       <string>Delay Controller</string>
+      </property>
+     </widget>
+    </item>
+    <item row="18" column="0">
+     <widget class="Line" name="line_3">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
       </property>
      </widget>
     </item>
@@ -246,28 +278,24 @@
       </property>
      </widget>
     </item>
-    <item row="10" column="0">
-     <widget class="QLabel" name="label_FringeTrackerViewer">
-      <property name="text">
-       <string>Fringe Tracker Viewer</string>
-      </property>
-     </widget>
-    </item>
-    <item row="17" column="0">
-     <widget class="QLabel" name="label_Simulator">
-      <property name="text">
-       <string>Simulator</string>
-      </property>
-     </widget>
-    </item>
-    <item row="14" column="1">
-     <widget class="QCheckBox" name="checkBox_PhasorViewer">
+    <item row="3" column="1">
+     <widget class="QCheckBox" name="checkBox_FringeTracker">
       <property name="text">
        <string/>
       </property>
      </widget>
     </item>
-    <item row="18" column="0">
+    <item row="14" column="2">
+     <widget class="amjLED" name="amjLED_PhasorViewer" native="true"/>
+    </item>
+    <item row="2" column="0" alignment="Qt::AlignVCenter">
+     <widget class="QLabel" name="label_DataProcessor">
+      <property name="text">
+       <string>Data Processor</string>
+      </property>
+     </widget>
+    </item>
+    <item row="20" column="0">
      <widget class="QLabel" name="label_SimulatorController">
       <property name="enabled">
        <bool>false</bool>
@@ -277,41 +305,27 @@
       </property>
      </widget>
     </item>
-    <item row="8" column="0">
-     <widget class="QLabel" name="label_TrackerController">
+    <item row="15" column="0">
+     <widget class="QLabel" name="label_SNRViewer">
       <property name="text">
-       <string>Tracker Controller</string>
+       <string>SNRViewer</string>
       </property>
      </widget>
     </item>
-    <item row="14" column="0">
-     <widget class="QLabel" name="label_PhasorViewer">
+    <item row="12" column="2">
+     <widget class="amjLED" name="amjLED_DelayLineViewer" native="true"/>
+    </item>
+    <item row="19" column="0">
+     <widget class="QLabel" name="label_Simulator">
       <property name="text">
-       <string>Phasor Viewer</string>
+       <string>Simulator</string>
       </property>
      </widget>
     </item>
-    <item row="10" column="2">
-     <widget class="amjLED" name="amjLED_FringeTrackerViewer" native="true"/>
-    </item>
-    <item row="12" column="1">
-     <widget class="QCheckBox" name="checkBox_DelayLineViewer">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="1">
-     <widget class="QCheckBox" name="checkBox_FrameViewer">
-      <property name="text">
-       <string/>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="1">
-     <widget class="QCheckBox" name="checkBox_TrackerController">
-      <property name="text">
-       <string/>
+    <item row="3" column="4" rowspan="19" colspan="3">
+     <widget class="QTextEdit" name="textEdit_log">
+      <property name="readOnly">
+       <bool>true</bool>
       </property>
      </widget>
     </item>
@@ -322,32 +336,15 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_FringeTracker">
+    <item row="15" column="1">
+     <widget class="QCheckBox" name="checkBox_SNRViewer">
       <property name="text">
-       <string>Fringe Tracker</string>
+       <string/>
       </property>
      </widget>
     </item>
-    <item row="3" column="2">
-     <widget class="amjLED" name="amjLED_FringeTracker" native="true"/>
-    </item>
-    <item row="11" column="0">
-     <widget class="QLabel" name="label_FrameViewer">
-      <property name="text">
-       <string>Frame Viewer</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="4" rowspan="17" colspan="3">
-     <widget class="QTextEdit" name="textEdit_log">
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0">
-     <widget class="QLineEdit" name="lineEdit"/>
+    <item row="15" column="2">
+     <widget class="amjLED" name="amjLED_SNRViewer" native="true"/>
     </item>
    </layout>
   </widget>
@@ -356,7 +353,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>654</width>
+     <width>602</width>
      <height>22</height>
     </rect>
    </property>

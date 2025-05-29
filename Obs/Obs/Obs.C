@@ -27,7 +27,8 @@ Obs::Obs(QWidget *parent)
                              "--sender-movements","127.0.0.1:27004",
                              "--sender-tracker-stats","127.0.0.1:27008","10","1000",
                              "--sender-tracker-controller","127.0.0.1:27009","1000",
-                             "--receiver-tracker-controller","127.0.0.1:27010","$FRINGETRACKER"},
+                             "--receiver-tracker-controller","127.0.0.1:27010",
+                             "--sender-tracker-snr","127.0.0.1:27011","$FRINGETRACKER"},
                             new QProcess}));
   processes.append(process({"DelayController",ui->label_DelayController,ui->checkBox_DelayController,
                             ui->amjLED_DelayController,"DelayController",
@@ -65,6 +66,10 @@ Obs::Obs(QWidget *parent)
                              "--sender-frames2","/frameviewer:2:10000","100",
                              "--receiver-delaylines","127.0.0.1:27003","$SIMULATOR"},
                             new QProcess}));
+  processes.append(process({"SNRViewer",ui->label_SNRViewer,ui->checkBox_SNRViewer,
+                           ui->amjLED_SNRViewer,"SNRViewer",
+                           {"--receiver-tracker-snr","127.0.0.1:27011","$SNRVIEWER"},
+                           new QProcess}));
 
   connect(ui->toolButton_ConfigFile,&QToolButton::clicked,this,&Obs::load_config);
   connect(ui->toolButton_LogFile,&QToolButton::clicked,this,&Obs::set_logfile);
@@ -229,10 +234,17 @@ bool Obs::format_arguments(const QStringList ain, const Config &c, QStringList &
           aout.append(QString::fromStdString(ss[j]));
       }
       else{
-         std::cout << "Could not find " << s.toStdString() << " in configuration" << std::endl;
+         std::cerr << "Could not find " << s.toStdString() << " in configuration" << std::endl;
          return false;
       }
     }
   }
+  // int j;
+  // for(int i=0;i<aout.size();i++){
+  //   QString s=aout[i];
+  //   if((j=s.indexOf('@'))>=0){
+  //     if(
+  //   }
+  // }
   return true;
 }
