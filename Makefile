@@ -1,7 +1,7 @@
 
 TOPTARGETS := packages all clean distclean install uninstall 
 
-QMAKE=qmake
+QMAKE=qmake6
 
 SUBDIRS_OBS := DataProcessor/src DelayController/src \
   DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
