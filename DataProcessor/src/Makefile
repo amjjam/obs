@@ -2,7 +2,7 @@ ifndef prefix
 	prefix=/opt/obs
 endif
 ifndef INC
-	INC=-I/opt/amj/include
+	INC=-I/opt/amj/include -I/opt/asio/include
 endif
 ifndef LIB
 	LIB=-L/opt/amj/lib
@@ -17,6 +17,7 @@ CPPFLAGS=$(FLAGS)
 CPP=g++ $(CPPFLAGS)
 
 DATAPROCESSOR_SRC=processor.C DataProcessorBaselineSim.C \
+	DataProcessorStatus.C \
 	../../shared/src/Phasors.C 
 DATAPROCESSOR_OBJ=$(DATAPROCESSOR_SRC:.C=.o)
 
