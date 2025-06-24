@@ -97,15 +97,16 @@ void simulate_frame();
 #include <mutex>
 #include <atomic>
 #include "../include/DataProcessorStatus.H"
-std::mutex status_mutex;
-std::atomic<bool> status_running{true};
+std::mutex mutex;
+//std::atomic<bool> status_running{true};
 struct DataProcessorStatus processor_status;
-void status_thread();
+//void status_thread();
 // Status reporting
 
 // Raw input data
 amjTime rtime;
 Frame<uint16_t> rframe;
+double rfps=0; // Raw input frame rate
 
 // Bias data
 amjTime btime;
@@ -113,14 +114,15 @@ amjTime tmpbtime;
 Frame<double> bframe;
 Frame<double> tmpbframe;
 int nBias,iBias;
+bool hasBias=false;
 
 // Difference frame - used to compute phasors
 Frame<uint16_t> dframe;
-int simulator_seed=0;
 
 // Simulated data - used for testing
 amjTime stime;
 Frame<uint16_t> sframe;
+int simulator_seed=0;
 
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
@@ -139,11 +141,11 @@ int main(int argc, char *argv[]){
 			       server_frames_session,
 			       server_frames_status);
   server_frames->start();
-
-  std::thread reporter_thread(status_thread);
   
-  amjPacket fpacket;
-  amjPacket ppacket;
+  //std::thread reporter_thread(status_thread);
+  
+  amjPacket fpacket; // For input frames
+  amjPacket ppacket; // For output phasors to tracker
   
   FourierCompute compute(nL,nF,periods);//{-10,-5});
   PhasorSets phasors;
@@ -152,7 +154,7 @@ int main(int argc, char *argv[]){
   clock_gettime(CLOCK_MONOTONIC,&ts0);
 
   /* for frame counting */
-  int counter=0;
+  int rcounter=0;
   amjTime T0,T;
   T0.now();
   for(int i=0;;i++){
@@ -160,17 +162,13 @@ int main(int argc, char *argv[]){
     T.now();
     r.receive(fpacket);
 
-    //std::cout << "Received" << std::endl;
-    //for(int i=0;i<35;i++)
-    //  printf("%02x ",fpacket.data()[i]);
-    //printf("\n");
-
-    // Count frames
-    counter++;
+    // Count frames, fps
+    rcounter++;
     if(T-T0>=1){
-      std::cout << counter << " frames/s" << std::endl;
-      counter=0;
-      T0.now();
+      //std::cout << counter << " frames/s" << std::endl;
+      rfps=rcounter;
+      rcounter=0;
+      T0=T;
     }
 
     if(debug)
@@ -181,24 +179,37 @@ int main(int argc, char *argv[]){
     rtime.read(fpacket.read(rtime.size()));
     rframe.read1(fpacket.read(rframe.size1()));
     rframe.read2(fpacket.read(rframe.size2()));
-    
-    if(state=='S')
-      continue;
-    
-    if(state=='B'){
-      if(iBias==0)
-	tmpbframe=rframe;
-      else
-	tmpbframe+=rframe;
-      iBias++;
-      if(iBias==nBias){
-	bframe=tmpbframe/nBias;
-	state='S';
+
+    {
+
+      
+      if(state=='S')
+	continue;
+      
+      if(state=='B'){
+	if(iBias==0){
+	  tmpbtime=rtime;
+	  tmpbframe=rframe;
+	}
+	else
+	  tmpbframe+=rframe;
+	iBias++;
+	if(iBias==nBias){
+	  bframe=tmpbframe/nBias;
+	  btime=tmpbtime;
+	  hasBias=true;
+	  state='S';
+	}
+	continue;
       }
-      continue;
+      
     }
 
-    dframe=rframe-bframe;
+    // Subtract bias frame if we have one
+    if(hasBias)
+      dframe=rframe-bframe;
+    else
+      dframe=rframe;
     
     // Process frame
     compute.phasors(dframe,phasors);
@@ -223,6 +234,8 @@ int main(int argc, char *argv[]){
     
     // Send results to phasor viewer
     t1=time(NULL);
+    
+    
     if(t1>t0){
       t0=t1;
       if(sender_phasorviewer.size()>0){
@@ -311,23 +324,41 @@ void server_commands_status(amjCom::Server, amjCom::Status s){
 	      << s.statedescription() << std::endl;
 }
 
-void server_commands_session_receive(amjCom::Session, amjCom::Packet &p){
+void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
   char c;
   memcpy(&c,p.read(1),1);
-  if(c=='S'){
-    state='S';
-  }
-  else if(c=='P'){
-    state='P';
-  }
-  else if(c=='B'){
-    state='B';
-    memcpy(&nBias,p.read(sizeof(uint32_t)),sizeof(uint32_t));
-    iBias=0;
-  }
-  else{
-    std::cout << "DataProcessor: server_commands: unknown command: "
-	      << c << ". Ignoring" << std::endl;
+
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    if(c=='S'){
+      state='S';
+    }
+    else if(c=='P'){
+      state='P';
+    }
+    else if(c=='B'){
+      state='B';
+      memcpy(&nBias,p.read(sizeof(uint32_t)),sizeof(uint32_t));
+      iBias=0;
+    }
+    else if(c=='U'){
+      struct DataProcessorStatus status;
+      {
+	std::lock_guard<std::mutex> lock(mutex);
+	status.state=state;
+	status.hasBias=hasBias;
+	status.nBias=nBias;
+	status.biastime=btime;
+	status.fps=rfps;
+      }
+      p.clear();
+      status.write(p.write(status.size()));
+      s->send(p);
+    }
+    else{
+      std::cout << "DataProcessor: server_commands: unknown command: "
+		<< c << ". Ignoring" << std::endl;
+    }
   }
 }
 
@@ -424,16 +455,16 @@ void simulate_frame(){
 }
 
 
-void status_thread(){
-  while(status_running.load()){
-    {
-      std::lock_guard<std::mutex> lock(status_mutex);
-      amjCom::Packet p;
-      processor_status.write(p.write(processor_status.size()));
-      std::cout << "status_thread: sending" << std::endl;
-      for(unsigned int i=0;i<server_commands_sessions.size();i++)
-	server_commands_sessions[i]->send(p);
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  }
-}
+// void status_thread(){
+//   while(status_running.load()){
+//     {
+//       std::lock_guard<std::mutex> lock(mutex);
+//       amjCom::Packet p;
+//       processor_status.write(p.write(processor_status.size()));
+//       std::cout << "status_thread: sending" << std::endl;
+//       for(unsigned int i=0;i<server_commands_sessions.size();i++)
+// 	server_commands_sessions[i]->send(p);
+//     }
+//     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//   }
+// }
