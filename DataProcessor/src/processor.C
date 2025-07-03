@@ -68,7 +68,6 @@ std::string sender_phasorviewer;
 int nL=256,nF=320;
 std::vector<float> periods;
 
-//std::vector<DataProcessorBaselineSim> sim;
 time_t t0=0;
 time_t t1;
 
@@ -111,7 +110,7 @@ double rfps=0; // Raw input frame rate
 // Bias data
 amjTime btime;
 amjTime tmpbtime;
-Frame<double> bframe;
+Frame<uint16_t> bframe;
 Frame<double> tmpbframe;
 int nBias,iBias;
 bool hasBias=false;
@@ -150,9 +149,6 @@ int main(int argc, char *argv[]){
   FourierCompute compute(nL,nF,periods);//{-10,-5});
   PhasorSets phasors;
   
-  timespec ts0,ts1;
-  clock_gettime(CLOCK_MONOTONIC,&ts0);
-
   /* for frame counting */
   int rcounter=0;
   amjTime T0,T;
@@ -165,7 +161,6 @@ int main(int argc, char *argv[]){
     // Count frames, fps
     rcounter++;
     if(T-T0>=1){
-      //std::cout << counter << " frames/s" << std::endl;
       rfps=rcounter;
       rcounter=0;
       T0=T;
@@ -173,19 +168,19 @@ int main(int argc, char *argv[]){
 
     if(debug)
       std::cout << "received" << std::endl;
-    
+
     // Read frame from packet
-    fpacket.reset();
-    rtime.read(fpacket.read(rtime.size()));
-    rframe.read1(fpacket.read(rframe.size1()));
-    rframe.read2(fpacket.read(rframe.size2()));
-
     {
-
+      std::lock_guard<std::mutex> lock(mutex);
+      
+      fpacket.reset();
+      rtime.read(fpacket.read(rtime.size()));
+      rframe.read1(fpacket.read(rframe.size1()));
+      rframe.read2(fpacket.read(rframe.size2()));
       
       if(state=='S')
 	continue;
-      
+
       if(state=='B'){
 	if(iBias==0){
 	  tmpbtime=rtime;
@@ -199,12 +194,12 @@ int main(int argc, char *argv[]){
 	  btime=tmpbtime;
 	  hasBias=true;
 	  state='S';
+	  iBias=0;
 	}
 	continue;
       }
-      
     }
-
+    
     // Subtract bias frame if we have one
     if(hasBias)
       dframe=rframe-bframe;
@@ -225,17 +220,9 @@ int main(int argc, char *argv[]){
     
     // Send results to tracker
     s.send(ppacket);
-    if(i%100==0){
-      clock_gettime(CLOCK_MONOTONIC,&ts1);
-      double t=(ts1.tv_sec-ts0.tv_sec)+(double)(ts1.tv_nsec-ts0.tv_nsec)/1e9;
-      std::cout << i/100 << " " << t/100 << std::endl;
-      clock_gettime(CLOCK_MONOTONIC,&ts0);
-    }
     
     // Send results to phasor viewer
-    t1=time(NULL);
-    
-    
+    t1=time(NULL);    
     if(t1>t0){
       t0=t1;
       if(sender_phasorviewer.size()>0){
@@ -313,21 +300,19 @@ void server_commands_session(amjCom::Server, amjCom::Session S){
 }
 
 void server_commands_status(amjCom::Server, amjCom::Status s){
-  if(s.error()!=amjCom::Error::NoError){
+  if(s.error()){
     std::cout << "DataProcessor: server_commands: Error: "
 	      << s.errormessage() << std::endl;
-    exit(1);
   }
 
-  if(s.state()!=amjCom::State::NoState)
+  if(s.state())
     std::cout << "DataProcessor: server_commands: State: "
 	      << s.statedescription() << std::endl;
 }
 
 void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
-  char c;
-  memcpy(&c,p.read(1),1);
-
+  char c=p.read(1)[0];
+  
   {
     std::lock_guard<std::mutex> lock(mutex);
     if(c=='S'){
@@ -343,14 +328,11 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
     }
     else if(c=='U'){
       struct DataProcessorStatus status;
-      {
-	std::lock_guard<std::mutex> lock(mutex);
-	status.state=state;
-	status.hasBias=hasBias;
-	status.nBias=nBias;
-	status.biastime=btime;
-	status.fps=rfps;
-      }
+      status.state=state;
+      status.hasBias=hasBias;
+      status.nBias=nBias;
+      status.biastime=btime;
+      status.fps=rfps;
       p.clear();
       status.write(p.write(status.size()));
       s->send(p);
@@ -363,13 +345,12 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
 }
 
 void server_commands_session_status(amjCom::Session, amjCom::Status s){
-  if(s.error()!=amjCom::Error::NoError){
+  if(s.error()){
     std::cout << "DataProcessor: server_commands: Error: "
 	      << s.errormessage() << std::endl;
-    exit(1);
   }
   
-  if(s.state()!=amjCom::State::NoState)
+  if(s.state())
     std::cout << "DataProcessor: server_commands: State: "
 	      << s.statedescription() << std::endl;
 }
@@ -401,7 +382,7 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
 	      << ", expected size=1. Ignoring." << std::endl;
     return;
   }
-  std::cout << "server_frames_session_receive: " << p.data()[0] << std::endl;
+  //std::cout << "server_frames_session_receive: " << p.data()[0] << std::endl;
 
   amjCom::Packet q;
   if(p.data()[0]=='D'){
@@ -410,7 +391,7 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
     S->send(q);
   }
   else if(p.data()[0]=='R'){
-    std::cout << "rframe: " << rframe.nL() << ", " << rframe.nF() << std::endl;
+    //std::cout << "rframe: " << rframe.nL() << ", " << rframe.nF() << std::endl;
     rtime.write(q.write(rtime.size()));
     rframe.write(q.write(rframe.size()));
     S->send(q);
