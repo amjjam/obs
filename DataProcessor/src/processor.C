@@ -110,13 +110,13 @@ double rfps=0; // Raw input frame rate
 // Bias data
 amjTime btime;
 amjTime tmpbtime;
-Frame<uint16_t> bframe;
+Frame<double> bframe;
 Frame<double> tmpbframe;
 int nBias,iBias;
 bool hasBias=false;
 
 // Difference frame - used to compute phasors
-Frame<uint16_t> dframe;
+Frame<double> dframe;
 
 // Simulated data - used for testing
 amjTime stime;
@@ -387,24 +387,28 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
   amjCom::Packet q;
   if(p.data()[0]=='D'){
     rtime.write(q.write(rtime.size()));
-    dframe.write(q.write(rframe.size()));
+    Frame<float> tframe=dframe;
+    tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='R'){
     //std::cout << "rframe: " << rframe.nL() << ", " << rframe.nF() << std::endl;
     rtime.write(q.write(rtime.size()));
-    rframe.write(q.write(rframe.size()));
+    Frame<float> tframe=rframe;
+    tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='T'){
     simulate_frame();
     stime.write(q.write(stime.size()));
-    sframe.write(q.write(sframe.size()));
+    Frame<float> tframe=sframe;
+    tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='B'){
     btime.write(q.write(btime.size()));
-    bframe.write(q.write(bframe.size()));
+    Frame<float> tframe=bframe;
+    tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else
