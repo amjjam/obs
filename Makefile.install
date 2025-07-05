@@ -3,7 +3,7 @@ ifndef prefix
 endif
 export prefix
 
-QT_FOUND := $(shell pkg-config --exists Qt5Core && echo 1 || echo 0)
+QT_FOUND := $(shell pkg-config --exists Qt6Core && echo 1 || echo 0)
 
 QMAKE=qmake
 
