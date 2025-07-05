@@ -13,55 +13,70 @@ $(TOPTARGETS): $(SUBDIRS_OBS)
 DataProcessor/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
-
+	
 DelayController/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 DelaylineViewer/DelaylineViewer:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 FrameViewer/FrameViewer:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 FringeTracker/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 FringeTrackerViewer/FringeTrackerViewer:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 PhasorViewer/PhasorViewer:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 PowerSpectrumViewer/PowerSpectrumViewer:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 Simulator/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 TrackerController/TrackerController:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-
+	endif
+	
 Obs/Obs:
+	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
+	endif
 
 obs_script:
+	if ($(QT_FOUND),1)
 	echo "#!/bin/bash" > $(prefix)/bin/Obs.sh
 	echo "" >> $(prefix)/bin/Obs.sh
 	echo "export LD_LIBRARY_PATH=$(prefix)/lib" >> $(prefix)/bin/Obs.sh
@@ -70,3 +85,4 @@ obs_script:
 	echo "Obs" >> $(prefix)/bin/Obs.sh
 	echo "" >> $(prefix)/bin/Obs.sh
 	chmod u+x $(prefix)/bin/Obs.sh
+	endif
