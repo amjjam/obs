@@ -8,56 +8,57 @@ QT_FOUND := $(shell pkg-config --exists Qt6Core && echo 1 || echo 0)
 QMAKE=qmake
 
 packages_install: packages
-	ifeq ($(QT_FOUND),1)
-	$(MAKE) -C packages/QCustomPlot -f Makefile.anders install
-	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
-	prefix_QCustomPlot=$(prefix))
-	$(MAKE) -C packages/amjChart/amjChart install
-	endif
+
+ifeq ($(QT_FOUND),1)
+packages_install: qt_packages_install
+packages_uninstall: qt_packages_uninstall
+packages_clean: qt_packages_clean
+endif
+
+packages_install:
 	$(MAKE) -C packages/amjCom/src install
 	$(MAKE) -C packages/amjInterferometry/src install
 	$(MAKE) -C packages/amjFourier/src install
 	$(MAKE) -C packages/amjTime/src install
-	ifeq ($(QT_FOUND),1)
-	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
-	$(MAKE) -C packages/amjWidgets/amjWidgets install
-	endif
 	$(MAKE) -C packages/amjAtmosphere/src install
 	$(MAKE) -C packages/amjRandom/src install
 
-packages_uninstall:
-	ifeq ($(QT_FOUND),1)
-	$(MAKE) -C packages/QCustomPlot -f Makefile.anders uninstall
+qt_packages_install:
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders install
 	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
 	prefix_QCustomPlot=$(prefix))
-	$(MAKE) -C packages/amjChart/amjChart uninstall
-	endif
+	$(MAKE) -C packages/amjChart/amjChart install
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets install
+
+packages_uninstall:
 	$(MAKE) -C packages/amjCom/src uninstall
 	$(MAKE) -C packages/amjInterferometry/src uninstall
 	$(MAKE) -C packages/amjFourier/src uninstall
 	$(MAKE) -C packages/amjTime/src uninstall
-	ifeq ($(QT_FOUND),1)
-	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
-	$(MAKE) -C packages/amjWidgets/amjWidgets uninstall
-	endif
 	$(MAKE) -C packages/amjAtmosphere/src uninstall
 	$(MAKE) -C packages/amjRandom/src uninstall
 
-packages_clean:
-	ifeq ($(QT_FOUND),1)
-	$(MAKE) -C packages/QCustomPlot -f Makefile.anders clean
+qt_packages_uninstall:
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders uninstall
 	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
 	prefix_QCustomPlot=$(prefix))
-	$(MAKE) -C packages/amjChart/amjChart clean
-	endif
+	$(MAKE) -C packages/amjChart/amjChart uninstall
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets uninstall
+
+packages_clean:
 	$(MAKE) -C packages/amjCom/src clean
 	$(MAKE) -C packages/amjInterferometry/src clean
 	$(MAKE) -C packages/amjFourier/src clean
 	$(MAKE) -C packages/amjTime/src clean
-	ifeq ($(QT_FOUND),1)
-	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
-	$(MAKE) -C packages/amjWidgets/amjWidgets clean
-	endif
 	$(MAKE) -C packages/amjAtmosphere/src clean
 	$(MAKE) -C packages/amjRandom/src clean
 
+qt_packages_clean:
+	$(MAKE) -C packages/QCustomPlot -f Makefile.anders clean
+	(cd packages/amjChart/amjChart; $(QMAKE) prefix=$(prefix) \
+	prefix_QCustomPlot=$(prefix))
+	$(MAKE) -C packages/amjChart/amjChart clean
+	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjWidgets/amjWidgets clean

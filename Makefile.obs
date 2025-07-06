@@ -1,10 +1,18 @@
 TOPTARGETS := all install uninstall clean
 
 SUBDIRS_OBS := DataProcessor/src DelayController/src \
-  DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
-  FringeTracker/src FringeTrackerViewer/FringeTrackerViewer \
+  FringeTracker/src \
+  Simulator/src 
+
+ifeq ($(QT_FOUND),1)
+SUBDIRS_QT := DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
+  FringeTrackerViewer/FringeTrackerViewer \
   PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
-  Simulator/src TrackerController/TrackerController Obs/Obs obs_script
+  TrackerController/TrackerController Obs/Obs obs_script
+
+SUBDIRS_OBJ += SUBDIRS_QT
+
+endif
 
 $(TOPTARGETS): $(SUBDIRS_OBS)
 
@@ -18,65 +26,65 @@ DelayController/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
+if ($(QT_FOUND),1)
 DelaylineViewer/DelaylineViewer:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
+if ($(QT_FOUND),1)
 FrameViewer/FrameViewer:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
 FringeTracker/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
+if ($(QT_FOUND),1)
 FringeTrackerViewer/FringeTrackerViewer:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
+if ($(QT_FOUND),1)
 PhasorViewer/PhasorViewer:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
+if ($(QT_FOUND),1)
 PowerSpectrumViewer/PowerSpectrumViewer:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
 Simulator/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
+if ($(QT_FOUND),1)
 TrackerController/TrackerController:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 	
+if ($(QT_FOUND),1)
 Obs/Obs:
-	if ($(QT_FOUND),1)
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
-	endif
+endif
 
+if ($(QT_FOUND),1)
 obs_script:
-	if ($(QT_FOUND),1)
 	echo "#!/bin/bash" > $(prefix)/bin/Obs.sh
 	echo "" >> $(prefix)/bin/Obs.sh
 	echo "export LD_LIBRARY_PATH=$(prefix)/lib" >> $(prefix)/bin/Obs.sh
@@ -85,4 +93,4 @@ obs_script:
 	echo "Obs" >> $(prefix)/bin/Obs.sh
 	echo "" >> $(prefix)/bin/Obs.sh
 	chmod u+x $(prefix)/bin/Obs.sh
-	endif
+endif
