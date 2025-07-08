@@ -5,7 +5,7 @@ export prefix
 
 QT_FOUND := $(shell pkg-config --exists Qt6Core && echo 1 || echo 0)
 
-QMAKE=qmake
+QMAKE=qmake6
 
 packages_install: packages
 
@@ -20,8 +20,8 @@ packages_install:
 	$(MAKE) -C packages/amjInterferometry/src install
 	$(MAKE) -C packages/amjFourier/src install
 	$(MAKE) -C packages/amjTime/src install
-	$(MAKE) -C packages/amjAtmosphere/src install
 	$(MAKE) -C packages/amjRandom/src install
+	$(MAKE) -C packages/amjAtmosphere/src install
 
 qt_packages_install:
 	$(MAKE) -C packages/QCustomPlot -f Makefile.anders install

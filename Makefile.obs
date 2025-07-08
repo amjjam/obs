@@ -19,21 +19,21 @@ $(TOPTARGETS): $(SUBDIRS_OBS)
 .PHONY: $(TOPTARGETS) $(SUBDIRS_OBS)
 
 DataProcessor/src:
-	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include -I$(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
-	
+
 DelayController/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 DelaylineViewer/DelaylineViewer:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 FrameViewer/FrameViewer:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
@@ -44,21 +44,21 @@ FringeTracker/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 FringeTrackerViewer/FringeTrackerViewer:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 PhasorViewer/PhasorViewer:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include " \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 PowerSpectrumViewer/PowerSpectrumViewer:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
@@ -69,21 +69,21 @@ Simulator/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 TrackerController/TrackerController:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
-	
-if ($(QT_FOUND),1)
+
+ifeq ($(QT_FOUND),1)
 Obs/Obs:
 	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
 
-if ($(QT_FOUND),1)
+ifeq ($(QT_FOUND),1)
 obs_script:
 	echo "#!/bin/bash" > $(prefix)/bin/Obs.sh
 	echo "" >> $(prefix)/bin/Obs.sh
