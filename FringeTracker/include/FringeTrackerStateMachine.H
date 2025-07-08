@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <complex>
+#include <stdint.h>
 
 #include <amjCom/amjPacketRW.H>
 
