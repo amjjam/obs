@@ -11,7 +11,7 @@ mkdir -p "$PID_DIR" "$LOG_DIR"
 export LD_LIBRARY_PATH="$SCRIPT_DIR/../lib:$LD_LIBRARY_PATH"
 
 # Commands relative to the script directory
-CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0 -test 100 -port 8031 -sender-frames /frames:2:200000"
+CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0 -sender-frames /frames:2:200000 -ofile counts $HOME/amj/tmp/amjngc.counts"
 CMD2="$SCRIPT_DIR/../bin/DataProcessor --receiver-frames /frames:2:200000"
 CMD3="$SCRIPT_DIR/../bin/FringeTracker --active 1 --receiver-phasors 127.0.0.1:27001 --sender-pspec 127.0.0.1:27006 100 --sender-movements 127.0.0.1:27004 --sender-tracker_status 127.0.0.1:27008 10 1000 --sender-tracker-controller 127.0.0.1:27009 1000 --receiver-tracker-controller 127.0.0.1:27010 --sender-tracker-snr 127.0.0.1:27011"
 CMD4="$SCRIPT_DIR/../bin/DelayController --receiver-movements 127.0.0.1:27004 --sender-display 127.0.0.1:27007 100 --sender-delaylines sim 6 127.0.0.1:27003"
