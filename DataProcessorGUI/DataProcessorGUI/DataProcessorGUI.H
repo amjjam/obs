@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 
-#include <amjCom/amjComTCP.H>
+#include <amjCom/amjCom.H>
 
 #include "../../DataProcessor/include/DataProcessorStatus.H"
 

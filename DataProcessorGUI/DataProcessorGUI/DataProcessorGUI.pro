@@ -8,7 +8,7 @@ isEmpty(prefix){
   prefix=/opt/obs
 }
 isEmpty(INC){
-  INC=/opt/amj/include /opt/QCustomPlot/include /opt/asio/include
+  INC=/opt/amj/include /opt/amj/include/amjCom/ /opt/QCustomPlot/include /opt/asio/include
 }
 isEmpty(LIB){
   LIB=-L/opt/amj/lib -L/opt/QCustomPlot/lib
