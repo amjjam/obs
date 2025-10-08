@@ -1,9 +1,11 @@
+QT_FOUND := $(shell pkg-config --modversion Qt6Core > /dev/null 2>&1 && echo -n 1 || echo -n 0)
+
 ifndef prefix
   prefix=$(CURDIR)
 endif
 export prefix
 
-QT_FOUND := $(shell pkg-config --exists Qt6Core && echo 1 || echo 0)
+print-%  : ; @echo $* = $($*)
 
 QMAKE=qmake6
 
