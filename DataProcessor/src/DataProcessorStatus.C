@@ -4,7 +4,7 @@
 
 int DataProcessorStatus::size(){
   return sizeof(char)+sizeof(bool)+sizeof(uint32_t)+biastime.size()
-    +sizeof(float);
+    +sizeof(float)+sizeof(int32_t);
 }
 
 void DataProcessorStatus::write(uint8_t *d){
@@ -14,6 +14,8 @@ void DataProcessorStatus::write(uint8_t *d){
   biastime.write(d+sizeof(char)+sizeof(bool)+sizeof(uint32_t));
   memcpy(d+sizeof(char)+sizeof(bool)+sizeof(uint32_t)+biastime.size(),
 	 &fps,sizeof(float));
+  memcpy(d+sizeof(char)+sizeof(bool)+sizeof(uint32_t)+biastime.size()+
+	 sizeof(float),&fileframes,sizeof(int32_t));
 }
 
 void DataProcessorStatus::read(uint8_t *d){
@@ -23,4 +25,6 @@ void DataProcessorStatus::read(uint8_t *d){
   biastime.read(d+sizeof(char)+sizeof(bool)+sizeof(uint32_t));
   memcpy(&fps,d+sizeof(char)+sizeof(bool)+sizeof(uint32_t)+biastime.size(),
 	 sizeof(float));
+  memcpy(&fileframes,d+sizeof(char)+sizeof(bool)+sizeof(uint32_t)+
+	 biastime.size()+sizeof(float),sizeof(int32_t));
 }

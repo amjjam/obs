@@ -2,7 +2,7 @@ ifndef prefix
 	prefix=/opt/obs
 endif
 ifndef INC
-	INC=-I/opt/amj/include -I/opt/asio/include
+	INC=-I/opt/amj/include -I/opt/amj/include/amjCom
 endif
 ifndef LIB
 	LIB=-L/opt/amj/lib

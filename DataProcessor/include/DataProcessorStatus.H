@@ -14,6 +14,7 @@ struct DataProcessorStatus{
   uint32_t nBias;
   amjTime biastime;
   float fps;
+  int32_t fileframes;
 };
 
 #endif /* _DATAPROCESSORSTATUS_H_ */

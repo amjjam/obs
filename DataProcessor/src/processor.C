@@ -42,6 +42,11 @@
     B - accumulate a bias frame. It is followed by a uint32 counting
         the number of frames to average. If another command arrives before
 	B is completed, the number of actual frames accumulated will be used.
+    F - File. Start or stop writing to file. It is followed by O to start,
+        and C to stop (open/close). O is followed C or F for counts or frames.
+	That is followed by uint32_t and then characters. The
+	uint32_t is the number of characters which are the file name to
+	write to.
  ==========================================================================*/
 
 #include <cstring>
@@ -116,12 +121,18 @@ int nBias,iBias;
 bool hasBias=false;
 
 // Difference frame - used to compute phasors
-Frame<double> dframe;
+Frame<float> dframe;
 
 // Simulated data - used for testing
 amjTime stime;
 Frame<uint16_t> sframe;
 int simulator_seed=0;
+
+// For file output
+int32_t fileframes=0;
+std::string filename;
+FILE *fp=nullptr;
+char filetype=0;
 
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
@@ -201,8 +212,10 @@ int main(int argc, char *argv[]){
     }
     
     // Subtract bias frame if we have one
-    if(hasBias)
-      dframe=rframe-bframe;
+    if(hasBias){
+      Frame<float> tframe=rframe;
+      dframe=tframe-bframe;
+    }
     else
       dframe=rframe;
     
@@ -215,7 +228,7 @@ int main(int argc, char *argv[]){
     
     // Write phasors into packet
     ppacket.clear();
-    rtime.write(ppacket.write(T.size()));
+    rtime.write(ppacket.write(rtime.size()));
     ppacket << phasors;
     
     // Send results to tracker
@@ -227,6 +240,31 @@ int main(int argc, char *argv[]){
       t0=t1;
       if(sender_phasorviewer.size()>0){
 	p.send(ppacket);
+      }
+    }
+
+    // Write to file
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      if(fp){
+	uint8_t buffer[20];
+	rtime.write(buffer);
+	fwrite(buffer,1,rtime.size(),fp);
+	uint32_t nL=rframe.nL(),nF=rframe.nF(),iL,iF;
+	if(filetype=='C'){
+	  uint32_t counts=0;
+	  for(iL=0;iL<nL;iL++)
+	    for(iF=0;iF<nF;iF++)
+	      counts+=rframe[iL][iF];
+	  fwrite(&counts,sizeof(uint32_t),1,fp);
+	}
+	else if(filetype=='F'){
+	  fwrite(&nL,sizeof(uint32_t),1,fp);
+	  fwrite(&nF,sizeof(uint32_t),1,fp);
+	  for(iL=0;iL<nL;iL++)
+	    fwrite(&rframe[iL][0],sizeof(uint16_t),nF,fp);
+	}
+	fileframes++;
       }
     }
   }
@@ -326,6 +364,30 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
       memcpy(&nBias,p.read(sizeof(uint32_t)),sizeof(uint32_t));
       iBias=0;
     }
+    else if(c=='F'){
+      c=p.read(1)[0];
+      if(c=='O'){
+	fileframes=0;
+	uint32_t l;
+	filetype=p.read(1)[0];
+	memcpy(&l,p.read(sizeof(uint32_t)),sizeof(uint32_t));
+	std::string filename((char *)p.read(l),l);
+	if((fp=fopen(filename.c_str(),"w"))==nullptr){
+	  std::cout << "warning: could not open file for output: "
+		    << filename << std::endl;
+	  fileframes=-1;
+	}
+      }
+      else if(c=='C'){
+	if(fp!=nullptr)
+	  fclose(fp);
+	fp=nullptr;
+      }
+      else{
+	std::cout << "error: command F followed by " << c << std::endl;
+	exit(1);
+      }
+    }
     else if(c=='U'){
       struct DataProcessorStatus status;
       status.state=state;
@@ -333,6 +395,7 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
       status.nBias=nBias;
       status.biastime=btime;
       status.fps=rfps;
+      status.fileframes=fileframes;
       p.clear();
       status.write(p.write(status.size()));
       s->send(p);
@@ -357,6 +420,8 @@ void server_commands_session_status(amjCom::Session, amjCom::Status s){
 
 void server_frames_session(amjCom::Server, amjCom::Session S){
   std::cout << "new frames session" << std::endl;
+  S->drop_pending(true);
+  //std::static_pointer_cast<amjCom::TCP::_Session>(S)->drop_pending(true);
   S->start([&](amjCom::Session S, amjCom::Packet &p){
     server_frames_session_receive(S,p);},
     [&](amjCom::Session S, amjCom::Status s){
@@ -411,9 +476,16 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
-  else
+  else{
     std::cout << "server_frames: receive: error: command="
 	      << p.data()[0] << " is not recognized. Ignoring" << std::endl;
+    return;
+  }
+
+  std::cout << "sent frame: size=" << q.size() << std::endl;
+  for(unsigned int i=0;i<q.size()&&i<25;i++)
+    printf("%02x ",q.data()[i]);
+  printf("\n");
 }
 
 
@@ -438,18 +510,3 @@ void simulate_frame(){
 		    -(double)SIMULATED_F/2)/(double)SIMULATED_PERIOD);
   simulator_seed++;
 }
-
-
-// void status_thread(){
-//   while(status_running.load()){
-//     {
-//       std::lock_guard<std::mutex> lock(mutex);
-//       amjCom::Packet p;
-//       processor_status.write(p.write(processor_status.size()));
-//       std::cout << "status_thread: sending" << std::endl;
-//       for(unsigned int i=0;i<server_commands_sessions.size();i++)
-// 	server_commands_sessions[i]->send(p);
-//     }
-//     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-//   }
-// }
