@@ -6,7 +6,7 @@ isEmpty(prefix){
   prefix=/opt/obs
 }
 isEmpty(INC){
-  INC=/opt/amj/include /opt/QCustomPlot/include
+  INC=/opt/amj/include /opt/amj/include/amjCom /opt/QCustomPlot/include /opt/asio/include
 }
 isEmpty(LIB){
   LIB=-L/opt/amj/lib -L/opt/QCustomPlot/lib
@@ -24,7 +24,7 @@ HEADERS += FrameViewer.H
 
 FORMS += FrameViewer.ui
 
-LIBS += $${LIB} -lqcustomplot -lamjCom -lamjFourier
+LIBS += $${LIB} -lamjCom -lamjTime
 
 INCLUDEPATH += $${INC}
         
@@ -45,3 +45,6 @@ target.path=$${prefix}/bin
 #LIBS += -L/opt/amj/lib -lamjFourier
 #INCLUDEPATH += /opt/amj/include
 #LD_LIBRARY_PATH += /opt/amj/lib
+
+DISTFILES += \
+    anders.clang-format

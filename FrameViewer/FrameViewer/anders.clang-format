@@ -1,0 +1,24 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortLoopsOnASingleLine: false
+
+ColumnLimit: 100  # Or adjust to your preference
+SpacesInParentheses: false
+SpaceBeforeParens: ControlStatements
+BreakBeforeBraces: Custom
