@@ -10,7 +10,7 @@ SUBDIRS_QT := DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
   PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
   TrackerController/TrackerController Obs/Obs obs_script
 
-SUBDIRS_OBJ += SUBDIRS_QT
+SUBDIRS_OBS += $(SUBDIRS_QT)
 
 endif
 
@@ -35,7 +35,7 @@ endif
 
 ifeq ($(QT_FOUND),1)
 FrameViewer/FrameViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include -I $(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
