@@ -22,6 +22,12 @@ DataProcessor/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include -I$(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
+ifeq ($(QT_FOUND),1)
+DataProcessorGUI/src:
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
+endif
+
 DelayController/src:
 	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
@@ -41,7 +47,7 @@ FrameViewer/FrameViewer:
 endif
 
 FringeTracker/src:
-	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
+	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include -I$(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 ifeq ($(QT_FOUND),1)
