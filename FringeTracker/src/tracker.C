@@ -58,7 +58,15 @@ Help help({
     "    <float> - the SNR lost level",
     "    <float> - the current SNR",
     "  nD of",
-    "    <float> - the movement for each delay line"
+    "    <float> - the movement for each delay line",
+    "--listen <int>",
+    "  TCP port to listen on for everything. For each new connection a single",
+    "  character is expected to indicate the type of connection",
+    "  C is a connection from a TrackerController GUI",
+    "  F is a connection from Fringe Tracker Viewer GUI",
+    "  P is a connection from a Power Spectrum Viewer GUI",
+    "  H is a connection from a PhasorViewer GUI",
+    "  S is a connection from a SNR Viewer GUI"
     /* ======================================================================*/
   });
 
@@ -85,6 +93,7 @@ Help help({
 #include <fstream>
 
 #include <amjCom/amjComUDP.H>
+#include <amjCom/amjComTCP.H>
 #include <amjTime.H>
 
 void parse_args(int,char *[]);
@@ -141,6 +150,14 @@ Baseline2DelaylineLinear baseline2delayline(0,nDelaylines);
 
 std::mutex m;
 
+// TCP server
+std::string server_address=":27014";
+std::vector<amjCom::Session> server_sessions;
+void server_session(amjCom::Server,amjCom::Session);
+void server_status(amjCom::Server,amjCom::Status);
+void server_session_receive(amjCom::Session,amjCom::Packet &);
+void server_session_status(amjCom::Session,amjCom::Status);
+
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
@@ -188,7 +205,12 @@ int main(int argc, char *argv[]){
   amjPacket packet;
   amjPacket packetSNRViewer;
   amjTime T;
-
+  
+  amjCom::Server server=amjCom::TCP::create_server(server_address,
+						   server_session,
+						   server_status);
+  server->start();
+  
   // Open trackerlog and write header information
   if(trackerlog.size()>0){
     fplog.open(trackerlog.c_str(),std::ios::binary|std::ios::out);
@@ -212,7 +234,7 @@ int main(int argc, char *argv[]){
     T.read(packet.read(T.size()));
     packet >> phasors;
     if(i%100==0)
-      std::cout << i/100 << std::endl;
+      std::cout << "nframes/100=" << i/100 << std::endl;
     
     // Lock out dimensions changes
     m.lock();
@@ -528,4 +550,70 @@ void *tracker_controller_sender(void *dummy){
     s.send(packet);
     usleep(1000000);
   }
+}
+
+void server_session(amjCom::Server,amjCom::Session S){
+  std::cout << "server_session: new session" << std::endl;
+  S->start([&](amjCom::Session S, amjCom::Packet &p){
+    server_session_receive(S,p);},
+    [&](amjCom::Session S, amjCom::Status s){
+      server_session_status(S,s);});
+  server_sessions.push_back(S);
+}
+
+void server_status(amjCom::Server,amjCom::Status s){
+  if(s.error()){
+    std::cout << "FringeTracker: server: Error: "
+	      << s.errormessage() << std::endl;
+  }
+  
+  if(s.state())
+    std::cout << "FringeTracker: server: State: "
+	      << s.statedescription() << std::endl;
+
+}
+
+void server_session_receive(amjCom::Session s, amjCom::Packet &p){
+  char c=p.read(1)[0];
+
+  {
+    std::cout << "server_session_receive: received: " << c << std::endl;
+    std::lock_guard<std::mutex> lock(m);
+
+    if(c=='P'){ // Send a power spectrum
+      //m.lock();
+      std::vector<std::string> names;
+      std::vector<PowerSpectrum> pspecs;
+      for(unsigned int i=0;i<delayMachines.size();i++){
+	names.push_back(delayMachines[i].name());
+	pspecs.push_back(delayMachines[i].p());
+      }
+      //m.unlock();
+      amjPacket _p;
+      amjCom::Packet p;
+      _p << names << pspecs;
+      p.write(_p.raw(),_p.size());
+      std::cout << "_p.size()=" << _p.size() << ", p.size()=" << p.size()
+		<< std::endl;
+      s->send(p);
+    }
+    else{
+      std::cout << "server_session_receiver: unrecognized command: "
+		<< c << ". ignoring" << std::endl;
+    }
+    
+  }
+      
+
+}
+
+void server_session_status(amjCom::Session,amjCom::Status s){
+  if(s.error()){
+    std::cout << "FringeTracker: server_session: Error: "
+	      << s.errormessage() << std::endl;
+  }
+  
+  if(s.state())
+    std::cout << "FringeTracker: server_session: State: "
+	      << s.statedescription() << std::endl;
 }
