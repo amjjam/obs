@@ -51,8 +51,8 @@ private:
   double scalemin,scalemax;
   int fps_counter;
 
-  Frame<float> frame;
-  Frame<int> iframe;
+  amjFourier::Frame<float> frame;
+  amjFourier::Frame<int> iframe;
   amjTime time;
   amjCom::Client client;
   QTimer send_timer;
@@ -79,10 +79,10 @@ private:
     uint64_t s;
     std::vector<uint32_t> h;
   };
-  void framehistogram(const Frame<int> &, struct histogram &h);
+  void framehistogram(const amjFourier::Frame<int> &, struct histogram &h);
   int histogrampercentile(const struct histogram &, double);
 
-  void testimage(Frame<float> &);
+  void testimage(amjFourier::Frame<float> &);
 };
 
 

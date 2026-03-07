@@ -67,8 +67,7 @@ FrameViewer::FrameViewer(QWidget *parent)
 
 FrameViewer::~FrameViewer() { delete ui; }
 
-void FrameViewer::radio_none_or_sim_toggled(bool)
-{
+void FrameViewer::radio_none_or_sim_toggled(bool){
     update_timer();
 }
 
@@ -121,13 +120,8 @@ void FrameViewer::server_updated() {
 std::mutex frame_mutex;
 void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
   std::lock_guard<std::mutex> lock(frame_mutex);
-  std::cout << "client_receive: p.size()=" << p.size()
-            << ", p[0]=" << (int)p.read(1)[0] << std::endl;
 
   p.begin();
-  for(int i= 0; i < 25 && i < p.size(); i++)
-    printf("%02X ", p.data()[i]);
-  printf("\n");
 
   if(p.size() < 100000) {
     std::cout << "client_receive: short packet: size=" << p.size()
@@ -140,16 +134,12 @@ void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
     return;
   }
 
-  std::cout << "1: " << p.pos() << std::endl;
-  time.read(p.read(time.size()));
-  std::cout << "2: " << p.pos() << std::endl;
   frame.read1(p.read(frame.size1()));
-  std::cout << "3: " << p.pos() << std::endl;
   frame.read2(p.read(frame.size2()));
 
   iframe= frame;
-  for(int iL= 0; iL < iframe.nL(); iL++)
-    for(int iF= 0; iF < iframe.nF(); iF++) {
+  for(size_t iL= 0; iL < iframe.wL(); iL++)
+    for(size_t iF= 0; iF < iframe.wF(); iF++) {
       int v= iframe[iL][iF];
       v= v < -100000 ? -100000 : v;
       v= v > 100000 ? 100000 : v;
@@ -223,11 +213,13 @@ void FrameViewer::display_frame() {
         scalemax = ui->verticalSlider_max->value();
     }
 
-    QImage image(iframe.nF(), iframe.nL(), QImage::Format_Grayscale8);
+    QImage image(iframe.wF(), iframe.wL(), QImage::Format_Grayscale8);
     uchar *outLine;
     int v;
     for(int iH= 0; iH < image.height(); iH++) {
-      outLine= image.scanLine(iH);
+      outLine
+        = image.scanLine(image.height() - 1
+                         - iH);// To flip it to display as in the ESO software
       for(int iW= 0; iW < image.width(); iW++) {
         v= iframe[iH][iW];
         if(v <= scalemin)
@@ -242,13 +234,30 @@ void FrameViewer::display_frame() {
 
   ui->image->setImage(image);
   fps_counter++;
+
+  // Set information line above frame
+  QString info
+    = QString("%1/%2/%3 %4:%5:%6 (nL,nF,L0,F0,wL,wF)=(%7,%8,%9,%10,%11,%12)")
+        .arg(iframe.time().yr())
+        .arg(iframe.time().mo())
+        .arg(iframe.time().dy())
+        .arg(iframe.time().hr(), 2)
+        .arg(iframe.time().mn(), 2)
+        .arg(iframe.time().se(), 2)
+        .arg(iframe.nL())
+        .arg(iframe.nF())
+        .arg(iframe.L0())
+        .arg(iframe.F0())
+        .arg(iframe.wL())
+        .arg(iframe.wF());
+  ui->label_frameinfo->setText(info);
 }
 
-void FrameViewer::framehistogram(const Frame<int> &frame,
+void FrameViewer::framehistogram(const amjFourier::Frame<int> &frame,
                                  struct histogram &histogram) {
   histogram.h.resize(200001);
-  for(unsigned int iL= 0; iL < frame.nL(); iL++)
-    for(unsigned int iF= 0; iF < frame.nF(); iF++)
+  for(unsigned int iL= 0; iL < frame.wL(); iL++)
+    for(unsigned int iF= 0; iF < frame.wF(); iF++)
       histogram.h[frame[iL][iF] + 100000]++;
   histogram.s= 0;
   for(uint i= 0; i < histogram.h.size(); i++)
@@ -267,9 +276,12 @@ int FrameViewer::histogrampercentile(const struct histogram &histogram,
   return value - 100000;
 }
 
-void FrameViewer::testimage(Frame<float> &frame) {
+void FrameViewer::testimage(amjFourier::Frame<float> &frame) {
   int width= 300, height= 200;
+  amjTime T;
+  T.now();
   frame.resize(height, width);
+  frame.time().now();
   for(int iL= 0; iL < height; iL++)
     for(int iF= 0; iF < width; iF++)
       frame[iL][iF]= (iF + iL + seed) % 256;
