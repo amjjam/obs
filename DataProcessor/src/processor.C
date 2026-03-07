@@ -1,53 +1,65 @@
-/*============================================================================
-  procssor [--receiver <string>] [--tracker <string>]
-  
-  --receiver-frames <string>
-    Specifies a communicator for listening for data frames. Shared memory.
-    <name>:<nbuffers>:<size>
-    <name> is /<text> name of the shared memory and of a semphore
-    <nbuffers> number of buffers
-    <size> size of each buffer
-  --sender-tracker <string>
-    Specifies a communicator to the tracker
-  --sender-phasorviewer <string>
-    Specifies a communicator to the phasor viewer
-  --framesize nL nF - number of pixels in wavelength and fringe direction
-    Defaults are nL=256 and nF=320
-  --fringeperiod p - number of pixels in one fringe period. Specify once
-    for each baseline and specify in order to send to the tracker. Sign
-    positive or negative
-  --baseline name n L0 L1 A S d
-    (<string> <int> <float> <float> <float> <float>)
-    name - baseline name
-    n - number of wavelength channels
-    L0 - shortest wavelength in microns
-    L1 - longest wavelength in microns
-    A - amplitude of phasors
-    S - standard deviation of noise in each of real and imaginary parts
-    d - delay in microns
-    (This is intended for testing)
-  --fourier-baseline p
-    p the period in pixels of the shortest wavelength channel
-    (specify once for each baseline)
-  --server-frames
-    The address to which clients can connect to receive frames
-    Default is TCP ":27012"
-  --server-commands
-    The address to which clients can connect to receive frames
-    Default is TCP ":27013"
-    Commands are:
-    S - stop. Don't send phasors to the fringe tracker.
-    P - phasors. Compute phasors from incoming frames. Subtract bias
-        frame from incoming frames and compute phasors. 
-    B - accumulate a bias frame. It is followed by a uint32 counting
-        the number of frames to average. If another command arrives before
-	B is completed, the number of actual frames accumulated will be used.
-    F - File. Start or stop writing to file. It is followed by O to start,
-        and C to stop (open/close). O is followed C or F for counts or frames.
-	That is followed by uint32_t and then characters. The
-	uint32_t is the number of characters which are the file name to
-	write to.
- ==========================================================================*/
+#include <amjArg.H>
+
+amjArg::Help
+
+/*============================================================================*/
+help({
+    "procssor [--receiver <string>] [--tracker <string>]",
+    "",
+    "--receiver-frames <string>",
+    "  Specifies a communicator for listening for data frames. Shared memory.",
+    "  <name>:<nbuffers>:<size> default is /frames:2:400000",
+    "   <name> is /<text> name of the shared memory and of a semphore",
+    "   <nbuffers> number of buffers",
+    "   <size> size of each buffer",
+    "--sender-tracker <string>",
+    "  Specifies a communicator to the tracker",
+    "  Default is 127.0.0.1:27001",
+    "--sender-phasorviewer <string>",
+    "  Specifies a communicator to the phasor viewer",
+    "  Default is 127.0.0.1:27002",
+    "--server-commands - TCP server for sending commands",
+    "  Default :27013",
+    "--server-frames - TCP server for getting frames",
+    "  Default :27012",
+    "--fringeperiod p - number of pixels in one fringe period. Specify once",
+    "  for each baseline and specify in order to send to the tracker. Sign",
+    "  positive or negative. If not specified, the default in the CalcPhasors",
+    "  object is used.",
+    "--baselinename <string> - name to attach each frame period. Specify once",
+    "  for each fringe period, whether default in CalcPhasor or specified on",
+    "  the command line with --fringeperiod. If not specified, the default in",
+    "  CalcPhasors is used.",
+    "--baseline name n L0 L1 A S d",
+    "  (<string> <int> <float> <float> <float> <float>)",
+    "  name - baseline name",
+    "  n - number of wavelength channels",
+    "  L0 - shortest wavelength in microns",
+    "  L1 - longest wavelength in microns",
+    "  A - amplitude of phasors",
+    "  S - standard deviation of noise in each of real and imaginary parts",
+    "  d - delay in microns",
+    "  (This is intended for testing)",
+    "--server-frames",
+    "  The address to which clients can connect to receive frames",
+    "  Default is TCP :27012",
+    "--server-commands",
+    "  The address to which clients can connect to send commands",
+    "  Default is TCP :27013",
+    "  Commands are:",
+    "  S - stop. Don't send phasors to the fringe tracker.",
+    "  P - phasors. Compute phasors from incoming frames. Subtract bias",
+    "      frame from incoming frames and compute phasors.",
+    "  B - accumulate a bias frame. It is followed by a uint32 counting",
+    "      the number of frames to average. If another command arrives before",
+    "  B is completed, the number of actual frames accumulated will be used.",
+    "  F - File. Start or stop writing to file. It is followed by O to start,",
+    "      and C to stop (open/close). O is followed C or F for counts or",
+    "      frames.",
+    "      That is followed by uint32_t and then characters. The",
+    "      uint32_t is the number of characters which are the file name to",
+    "      write to."});
+/*==========================================================================*/
 
 #include <cstring>
 #include <iostream>
@@ -64,31 +76,31 @@
 #include <amjTime.H>
 
 void parse_args(int argc, char *argv[]);
+void write_to_file(amjFourier::Frame<int16_t>);
 int read_argv_baseline(char *argv[]);
 
-std::string receiver_frames;
-std::string sender_tracker;
-std::string sender_phasorviewer;
+std::string receiver_frames="/frames:2:400000";
+std::string sender_tracker="127.0.0.1:27001";
+std::string sender_phasorviewer="127.0.0.1:27002";
+std::string server_commands_address=":27013";
+std::string server_frames_address=":27012";
 
-int nL=256,nF=320;
 std::vector<float> periods;
+std::vector<std::string> names;
 
 time_t t0=0;
 time_t t1;
 
 bool debug=false;
 char state='S';
-  
 
 std::vector<amjCom::Session> server_commands_sessions;
-std::string server_commands_address=":27013";
 void server_commands_session(amjCom::Server, amjCom::Session);
 void server_commands_status(amjCom::Server, amjCom::Status);
 void server_commands_session_receive(amjCom::Session, amjCom::Packet &);
 void server_commands_session_status(amjCom::Session, amjCom::Status);
 
 std::vector<amjCom::Session> server_frames_sessions;
-std::string server_frames_address=":27012";
 void server_frames_session(amjCom::Server, amjCom::Session);
 void server_frames_status(amjCom::Server, amjCom::Status);
 void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p);
@@ -108,24 +120,22 @@ struct DataProcessorStatus processor_status;
 // Status reporting
 
 // Raw input data
-amjTime rtime;
-Frame<uint16_t> rframe;
-double rfps=0; // Raw input frame rate
+amjFourier::Frame<int16_t> rframe;
+double fps=0; // Raw input frame rate
 
 // Bias data
 amjTime btime;
 amjTime tmpbtime;
-Frame<double> bframe;
-Frame<double> tmpbframe;
+amjFourier::Frame<double> bframe;
+amjFourier::Frame<double> tmpbframe;
 int nBias,iBias;
 bool hasBias=false;
 
 // Difference frame - used to compute phasors
-Frame<float> dframe;
+amjFourier::Frame<float> dframe;
 
 // Simulated data - used for testing
-amjTime stime;
-Frame<uint16_t> sframe;
+amjFourier::Frame<int16_t> sframe;
 int simulator_seed=0;
 
 // For file output
@@ -152,57 +162,60 @@ int main(int argc, char *argv[]){
 			       server_frames_status);
   server_frames->start();
   
-  //std::thread reporter_thread(status_thread);
-  
   amjPacket fpacket; // For input frames
   amjPacket ppacket; // For output phasors to tracker
-  
-  FourierCompute compute(nL,nF,periods);//{-10,-5});
-  PhasorSets phasors;
-  
-  /* for frame counting */
-  int rcounter=0;
+
+  amjFourier::Frame<int16_t> rframe;
+  amjFourier::Frame<float> bframe,tframe;
+  amjFourier::CalcPhasors calcphasors;
+  std::vector<amjInterferometry::Phasors<> > phasors;
+    
+  // For counting fps
+  int counter=0;
   amjTime T0,T;
   T0.now();
   for(int i=0;;i++){
-    // Wait for frame from shared memory
-    T.now();
     r.receive(fpacket);
-
+    T.now(); // For couting fps
+    
+    if(fpacket.size()==0){
+      std::cerr << "Warning: received empty packet. Skipping." << std::endl;
+      continue;
+    }
+    
     // Count frames, fps
-    rcounter++;
+    counter++;
     if(T-T0>=1){
-      rfps=rcounter;
-      rcounter=0;
+      fps=counter;
+      counter=0;
       T0=T;
     }
-
-    if(debug)
-      std::cout << "received" << std::endl;
-
+    
     // Read frame from packet
     {
       std::lock_guard<std::mutex> lock(mutex);
       
       fpacket.reset();
-      rtime.read(fpacket.read(rtime.size()));
       rframe.read1(fpacket.read(rframe.size1()));
       rframe.read2(fpacket.read(rframe.size2()));
+    }
+    
+    if(state=='S') // Stopped, skip frame
+      continue;
+    
+    {
+      std::lock_guard<std::mutex> lock(mutex);
       
-      if(state=='S')
-	continue;
-
-      if(state=='B'){
+      if(state=='B'){ // Collecting bias frames
 	if(iBias==0){
-	  tmpbtime=rtime;
-	  tmpbframe=rframe;
+	  hasBias=false;
+	  bframe=rframe;
 	}
 	else
-	  tmpbframe+=rframe;
+	  bframe+=rframe;
 	iBias++;
 	if(iBias==nBias){
-	  bframe=tmpbframe/nBias;
-	  btime=tmpbtime;
+	  bframe/=nBias;
 	  hasBias=true;
 	  state='S';
 	  iBias=0;
@@ -212,61 +225,36 @@ int main(int argc, char *argv[]){
     }
     
     // Subtract bias frame if we have one
-    if(hasBias){
-      Frame<float> tframe=rframe;
-      dframe=tframe-bframe;
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      
+      if(hasBias)
+	dframe=amjFourier::Frame<float>(rframe)-bframe;  
+      else
+	dframe=rframe;
     }
-    else
-      dframe=rframe;
     
     // Process frame
-    compute.phasors(dframe,phasors);
-
-    if(debug)
-      std::cout << phasors[0][0].real() << " " << phasors[0][0].imag()
-		<< std::endl;
+    calcphasors(dframe,phasors);
     
-    // Write phasors into packet
+    // Write phasors into packet and send to tracker
     ppacket.clear();
-    rtime.write(ppacket.write(rtime.size()));
-    ppacket << phasors;
-    
-    // Send results to tracker
+    uint32_t n=phasors.size();
+    memcpy(ppacket.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
+    for(uint32_t i=0;i<n;i++)
+      phasors[i].write(ppacket.write(phasors[i].memsize()));
     s.send(ppacket);
     
-    // Send results to phasor viewer
+    // Send phasors to phasor viewer
     t1=time(NULL);    
     if(t1>t0){
       t0=t1;
-      if(sender_phasorviewer.size()>0){
+      if(sender_phasorviewer.size()>0)
 	p.send(ppacket);
-      }
     }
-
-    // Write to file
-    {
-      std::lock_guard<std::mutex> lock(mutex);
-      if(fp){
-	uint8_t buffer[20];
-	rtime.write(buffer);
-	fwrite(buffer,1,rtime.size(),fp);
-	uint32_t nL=rframe.nL(),nF=rframe.nF(),iL,iF;
-	if(filetype=='C'){
-	  uint32_t counts=0;
-	  for(iL=0;iL<nL;iL++)
-	    for(iF=0;iF<nF;iF++)
-	      counts+=rframe[iL][iF];
-	  fwrite(&counts,sizeof(uint32_t),1,fp);
-	}
-	else if(filetype=='F'){
-	  fwrite(&nL,sizeof(uint32_t),1,fp);
-	  fwrite(&nF,sizeof(uint32_t),1,fp);
-	  for(iL=0;iL<nL;iL++)
-	    fwrite(&rframe[iL][0],sizeof(uint16_t),nF,fp);
-	}
-	fileframes++;
-      }
-    }
+    
+    // Write to file if open, either counts or frames
+    write_to_file(rframe);
   }
   
   return 0;
@@ -287,31 +275,53 @@ void parse_args(int argc, char *argv[]){
       i++;
       sender_phasorviewer=argv[i];
     }
-    else if(strcmp(argv[i],"--framesize")==0){
+    else if(strcmp(argv[i],"--server-commands")==0){
       i++;
-      nL=atoi(argv[i]);
-      i++;
-      nF=atoi(argv[i]);
-    }
-    else if(strcmp(argv[i],"--fringeperiod")==0){
-      i++;
-      periods.push_back(atof(argv[i]));
-    }
-    else if(strcmp(argv[i],"--baseline")==0){
-      i+=read_argv_baseline(argv+i+1);
+      server_commands_address=argv[i];
     }
     else if(strcmp(argv[i],"--server-frames")==0){
       i++;
       server_frames_address=argv[i];
     }
-    else if(strcmp(argv[i],"--server-commands")==0){
+    else if(strcmp(argv[i],"--fringeperiod")==0){
       i++;
-      server_commands_address=argv[i];
+      periods.push_back(atof(argv[i]));
+    }
+    else if(strcmp(argv[i],"--baselinename")==0){
+      i++;
+      names.push_back(argv[i]);
+    }
+    else if(strcmp(argv[i],"--baseline")==0){
+      i+=read_argv_baseline(argv+i+1);
     }
     else{
       std::cerr << "unknown parameter: " << argv[i] << std::endl;
       abort();
     }
+  }
+}
+
+void write_to_file(amjFourier::Frame<int16_t>){
+  std::lock_guard<std::mutex> lock(mutex);
+  if(fp){
+    uint8_t buffer[20];
+    rframe.time().write(buffer);
+    fwrite(buffer,1,rframe.time().size(),fp);
+    uint32_t wL=rframe.wL(),wF=rframe.wF(),iL,iF;
+    if(filetype=='C'){ // Write counts to file
+      uint32_t counts=0;
+      for(iL=0;iL<wL;iL++)
+	for(iF=0;iF<wF;iF++)
+	  counts+=rframe[iL][iF];
+      fwrite(&counts,sizeof(uint32_t),1,fp);
+    }
+    else if(filetype=='F'){ // Write frames to file
+      fwrite(&wL,sizeof(uint32_t),1,fp);
+      fwrite(&wF,sizeof(uint32_t),1,fp);
+      for(iL=0;iL<wL;iL++)
+	fwrite(&rframe[iL][0],sizeof(uint16_t),wF,fp);
+    }
+    fileframes++;
   }
 }
 
@@ -353,20 +363,20 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
   
   {
     std::lock_guard<std::mutex> lock(mutex);
-    if(c=='S'){
+    if(c=='S'){ // Stop
       state='S';
     }
-    else if(c=='P'){
+    else if(c=='P'){ // Compute phasors and send to tracker
       state='P';
     }
-    else if(c=='B'){
+    else if(c=='B'){ // Collect bias data, then stop
       state='B';
       memcpy(&nBias,p.read(sizeof(uint32_t)),sizeof(uint32_t));
       iBias=0;
     }
-    else if(c=='F'){
+    else if(c=='F'){ // File operation
       c=p.read(1)[0];
-      if(c=='O'){
+      if(c=='O'){ // Open file
 	fileframes=0;
 	uint32_t l;
 	filetype=p.read(1)[0];
@@ -378,7 +388,7 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
 	  fileframes=-1;
 	}
       }
-      else if(c=='C'){
+      else if(c=='C'){ // Close file
 	if(fp!=nullptr)
 	  fclose(fp);
 	fp=nullptr;
@@ -388,13 +398,13 @@ void server_commands_session_receive(amjCom::Session s, amjCom::Packet &p){
 	exit(1);
       }
     }
-    else if(c=='U'){
+    else if(c=='U'){ // Update
       struct DataProcessorStatus status;
       status.state=state;
       status.hasBias=hasBias;
       status.nBias=nBias;
       status.biastime=btime;
-      status.fps=rfps;
+      status.fps=fps;
       status.fileframes=fileframes;
       p.clear();
       status.write(p.write(status.size()));
@@ -451,28 +461,24 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
 
   amjCom::Packet q;
   if(p.data()[0]=='D'){
-    rtime.write(q.write(rtime.size()));
-    Frame<float> tframe=dframe;
+    amjFourier::Frame<float> tframe=dframe;
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='R'){
-    //std::cout << "rframe: " << rframe.nL() << ", " << rframe.nF() << std::endl;
-    rtime.write(q.write(rtime.size()));
-    Frame<float> tframe=rframe;
+    amjFourier::Frame<float> tframe=rframe;
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='T'){
     simulate_frame();
-    stime.write(q.write(stime.size()));
-    Frame<float> tframe=sframe;
-    tframe.write(q.write(tframe.size()));
+    amjFourier::Frame<float> tframe=sframe;
+    std::cout << "T: " << tframe.wL() << ", " << tframe.wF() << std::endl;
+    std::cout << tframe.write(q.write(tframe.size())) << std::endl;
     S->send(q);
   }
   else if(p.data()[0]=='B'){
-    btime.write(q.write(btime.size()));
-    Frame<float> tframe=bframe;
+    amjFourier::Frame<float> tframe=bframe;
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
@@ -499,8 +505,12 @@ void server_frames_session_status(amjCom::Session S, amjCom::Status s){
 #define SIMULATED_F 320
 #define SIMULATED_PERIOD 100
 void simulate_frame(){
-  stime.now();
   sframe.resize(SIMULATED_L,SIMULATED_F);
+  sframe.L0(0);
+  sframe.F0(0);
+  sframe.nL(SIMULATED_L);
+  sframe.nF(SIMULATED_F);
+  sframe.time().now();
   
   for(int iL=0;iL<SIMULATED_L;iL++)
     for(int iF=0;iF<SIMULATED_F;iF++)
