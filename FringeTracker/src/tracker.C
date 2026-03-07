@@ -13,6 +13,7 @@ Help help({
     "  delays smoothed.",
     "--receiver-phasors <string>",
     "  Specifies a communicator for listening for phasors",
+    "  Default is 127.0.0.1:27001",
     "--sender-movements <string>",
     "  Specifies a communicator for sending delay line movements",
     "--delaylines <int>",
@@ -127,7 +128,8 @@ bool active=false;
 std::vector<DelayMachineGD> delayMachines;
 std::vector<FringeTrackerStateMachine> stateMachines;
 
-PhasorSets phasors;
+//PhasorSets phasors;
+std::vector<amjInterferometry::Phasors<float> > phasors;
 //std::vector<std::vector<std::complex<float> > > phasors; /* [nBl][nLambda] */
 std::vector<std::pair<float,float> > baselinemovements;
 
@@ -161,14 +163,16 @@ void server_session_status(amjCom::Session,amjCom::Status);
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
-  // Create a thread to sample the power spectra
-  pthread_t thread_pspec;
-  if(sender_pspec.size()>0)
-    if(pthread_create(&thread_pspec,nullptr,sample_pspec,nullptr)!=0){
-      perror("could not start thread_pspec");
-      exit(EXIT_FAILURE);
-    }
+  // This is replaced with the TCP sessions
+  // // Create a thread to sample the power spectra
+  // pthread_t thread_pspec;
+  // if(sender_pspec.size()>0)
+  //   if(pthread_create(&thread_pspec,nullptr,sample_pspec,nullptr)!=0){
+  //     perror("could not start thread_pspec");
+  //     exit(EXIT_FAILURE);
+  //   }
 
+  // This should remain, to sample tracker stats, but should not send anything
   // Create a thread to sample the fringe trackers states and send statistics
   pthread_t thread_tracker_stats;
   if(sender_tracker_stats.size()>0)
@@ -178,24 +182,27 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
     }
 
+
+  // This is replaced with the TCP sessions
   // Create a thread to receive commands from the Fringe Tracker GUI
-  pthread_t thread_tracker_controller_receiver;
-  if(receiver_tracker_controller.size()>0)
-    if(pthread_create(&thread_tracker_controller_receiver,nullptr,
-		      tracker_controller_receiver,
-		      nullptr)!=0){
-      perror("could not start thread_tracker_controller");
-      exit(EXIT_FAILURE);
-    }
-  
-  // Create a thread to send config feedback to the Fringe Tracker GUI
-  pthread_t thread_tracker_controller_sender;
-  if(sender_tracker_controller.size()>0)
-    if(pthread_create(&thread_tracker_controller_sender,nullptr,
-		      tracker_controller_sender,nullptr)!=0){
-      perror("could not start thread_tracker_controller_sender");
-      exit(EXIT_FAILURE);
-    }
+  // pthread_t thread_tracker_controller_receiver;
+  // if(receiver_tracker_controller.size()>0)
+  //   if(pthread_create(&thread_tracker_controller_receiver,nullptr,
+  // 		      tracker_controller_receiver,
+  // 		      nullptr)!=0){
+  //     perror("could not start thread_tracker_controller");
+  //     exit(EXIT_FAILURE);
+  //   }
+
+  // This is replaced with the TCP sessions
+  // // Create a thread to send config feedback to the Fringe Tracker GUI
+  // pthread_t thread_tracker_controller_sender;
+  // if(sender_tracker_controller.size()>0)
+  //   if(pthread_create(&thread_tracker_controller_sender,nullptr,
+  // 		      tracker_controller_sender,nullptr)!=0){
+  //     perror("could not start thread_tracker_controller_sender");
+  //     exit(EXIT_FAILURE);
+  //   }
 
   std::cout << "sender_tracker_snr=" << sender_tracker_snr << std::endl;
   amjComEndpointUDP r(receiver_phasors,"");
@@ -437,28 +444,29 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
   flag_resizetrackerstats=true;
 }
 
-void* sample_pspec(void *dummy){
-  amjComEndpointUDP s("",sender_pspec);
-  amjPacket packet;
-  std::vector<std::string> names;
-  std::vector<PowerSpectrum> pspecs;
-  for(;;){
-    m.lock();
-    names.clear();
-    pspecs.clear();
-    for(unsigned int i=0;i<delayMachines.size();i++){
-      names.push_back(delayMachines[i].name());
-      pspecs.push_back(delayMachines[i].p());
-    }
-    m.unlock();
-    packet.clear();
-    packet << names;
-    packet << pspecs;
-    s.send(packet);
-    usleep(1000*sender_pspec_interval);
-  }
-}
+// void* sample_pspec(void *dummy){
+//   amjComEndpointUDP s("",sender_pspec);
+//   amjPacket packet;
+//   std::vector<std::string> names;
+//   std::vector<PowerSpectrum> pspecs;
+//   for(;;){
+//     m.lock();
+//     names.clear();
+//     pspecs.clear();
+//     for(unsigned int i=0;i<delayMachines.size();i++){
+//       names.push_back(delayMachines[i].name());
+//       pspecs.push_back(delayMachines[i].p());
+//     }
+//     m.unlock();
+//     packet.clear();
+//     packet << names;
+//     packet << pspecs;
+//     s.send(packet);
+//     usleep(1000*sender_pspec_interval);
+//   }
+// }
 
+// This should remain, to sample tracker stats, but it should not send anything
 void *sample_tracker_stats(void *dummy){
   amjComEndpointUDP s("",sender_tracker_stats);
   amjPacket packet;
@@ -504,53 +512,55 @@ void resizetrackerstats(){
     statenames[i]=stateMachines[0].stateName(i);
 }
 
-void *tracker_controller_receiver(void *dummy){
-  amjComEndpointUDP r(receiver_tracker_controller,"");
-  amjPacket packet;
-  int n;
-  FringeTrackerStateMachineConfig c;
-  for(;;){
-    std::cout << "tracker_controller_receiver" << std::endl;
-    r.receive(packet);
-    packet >> n;
-    m.lock();
-    if((unsigned int)n!=stateMachines.size()){
-      m.unlock();
-      std::cout << "tracker: tracker controller cmd mismatch: n=" << n
-		<< ", stateMachines.size()=" << stateMachines.size()
-		<< std::endl;
-      continue;
-    }
-    for(unsigned int i=0;i<stateMachines.size();i++){
-      c.read(packet.read(c.size()));
-      stateMachines[i].setConfig(c);
-    }    
-    m.unlock();
-  }
-}
+// this should be replaced with similar code in TCP sessions
+// void *tracker_controller_receiver(void *dummy){
+//   amjComEndpointUDP r(receiver_tracker_controller,"");
+//   amjPacket packet;
+//   int n;
+//   FringeTrackerStateMachineConfig c;
+//   for(;;){
+//     std::cout << "tracker_controller_receiver" << std::endl;
+//     r.receive(packet);
+//     packet >> n;
+//     m.lock();
+//     if((unsigned int)n!=stateMachines.size()){
+//       m.unlock();
+//       std::cout << "tracker: tracker controller cmd mismatch: n=" << n
+// 		<< ", stateMachines.size()=" << stateMachines.size()
+// 		<< std::endl;
+//       continue;
+//     }
+//     for(unsigned int i=0;i<stateMachines.size();i++){
+//       c.read(packet.read(c.size()));
+//       stateMachines[i].setConfig(c);
+//     }    
+//     m.unlock();
+//   }
+// }
 
-void *tracker_controller_sender(void *dummy){
-  amjComEndpointUDP s("",sender_tracker_controller);
-  amjPacket packet;
-  std::vector<std::string> names;
-  FringeTrackerStateMachineConfig c;
-  for(;;){
-    std::cout << "tracker_controller_sender" << std::endl;
-    packet.clear();
-    m.lock();
-    names.resize(stateMachines.size());
-    for(unsigned int i=0;i<stateMachines.size();i++)
-      names[i]=stateMachines[i].name();
-    packet << names;
-    for(unsigned int i=0;i<stateMachines.size();i++){
-      c=stateMachines[i].getConfig();
-      c.write(packet.write(c.size()));
-    }
-    m.unlock();
-    s.send(packet);
-    usleep(1000000);
-  }
-}
+// This should be replaced with similar code in TCP sessions
+// void *tracker_controller_sender(void *dummy){
+//   amjComEndpointUDP s("",sender_tracker_controller);
+//   amjPacket packet;
+//   std::vector<std::string> names;
+//   FringeTrackerStateMachineConfig c;
+//   for(;;){
+//     std::cout << "tracker_controller_sender" << std::endl;
+//     packet.clear();
+//     m.lock();
+//     names.resize(stateMachines.size());
+//     for(unsigned int i=0;i<stateMachines.size();i++)
+//       names[i]=stateMachines[i].name();
+//     packet << names;
+//     for(unsigned int i=0;i<stateMachines.size();i++){
+//       c=stateMachines[i].getConfig();
+//       c.write(packet.write(c.size()));
+//     }
+//     m.unlock();
+//     s.send(packet);
+//     usleep(1000000);
+//   }
+// }
 
 void server_session(amjCom::Server,amjCom::Session S){
   std::cout << "server_session: new session" << std::endl;
