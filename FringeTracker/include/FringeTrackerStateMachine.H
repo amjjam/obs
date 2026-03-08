@@ -68,13 +68,13 @@ public:
     _name(name),_state(state),
     _stateNames({"Stopped","Searching","Found","Locked","Lost"}){};
   ~FringeTrackerStateMachine(){};
-  std::string name(){return _name;};
+  const std::string &name() const {return _name;};
   std::string stateName() const;
   std::string stateName(int state) const;
   // State functions
   int nstates() const {return _stateNames.size();};
   int state() const {return _state;}; // current state
-  void loadDelay(const std::pair<float,float> &d){delay=d.first;_snr=d.second;};// Load the next delay
+  void loadDelay(float d, float s){delay=d;_snr=s;};// Load the next delay
   float snr(){return _snr;};
   int advance(); // Advance the state machine
   float movement() const {return _move;}; // Get the movement

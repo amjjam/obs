@@ -1,7 +1,8 @@
-#include "../../shared/include/Help.H"
+#include <amjArg.H>
 
-Help help({
-    /*=======================================================================*/
+amjArg::Help
+/*============================================================================*/
+help({
     "tracker [--<switch> <options>]",
     "",
     "--baseline <name> <nchans> <lambda0> <lambda1> <nOver> <nIncoherent> <nSmooth>",
@@ -72,14 +73,15 @@ Help help({
   });
 
 #include "../include/FringeTrackerStateMachine.H"
-#include "../include/DelayMachineGD.H"
+//#include "../include/DelayMachineGD.H"
+#include "../include/DelayMachineDFT.H"
 #include "../include/Baseline2DelaylineLinear.H"
 #include "../include/FringeTrackerBaselineSpec.H"
 
-#include "../../shared/include/Phasors.H"
+//#include "../../shared/include/Phasors.H"
 #include "../../shared/include/Timing.H"
-#include "../../shared/include/PowerSpectrum.H"
-#include "../../shared/include/Delays.H"
+//#include "../../shared/include/PowerSpectrum.H"
+//#include "../../shared/include/Delays.H"
 
 #include <mutex>
 #include <semaphore.h>
@@ -96,16 +98,21 @@ Help help({
 #include <amjCom/amjComUDP.H>
 #include <amjCom/amjComTCP.H>
 #include <amjTime.H>
+#include <amjInterferometry.H>
 
 void parse_args(int,char *[]);
-bool check_dimensions();
-void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &);
+bool compare(const std::vector<amjInterferometry::Phasors<float> > &,
+	     const std::vector<DelayMachineDFT> &);
+bool compare(const std::vector<DelayMachineDFT> &,
+	     const std::vector<FringeTrackerStateMachine> &);
+//bool check_dimensions();
+//void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &);
 void* sample_pspec(void *);
 void* sample_tracker_stats(void *);
 void resizetrackerstats();
 void *tracker_controller_receiver(void *);
 void *tracker_controller_sender(void *);
-void send2SNRViewer(std::vector<DelayMachineGD> &);
+void send2SNRViewer(std::vector<DelayMachineDFT> &);
 
 std::string receiver_phasors;
 std::string sender_movements;
@@ -124,8 +131,11 @@ int stateMachineTSample=10;
 int stateMachineTReport=1000;
 bool active=false;
 
+int nIncoherent=5;
+int nSmooth=1;
+
 //std::vector<std::string> names;
-std::vector<DelayMachineGD> delayMachines;
+std::vector<DelayMachineDFT> delayMachines;
 std::vector<FringeTrackerStateMachine> stateMachines;
 
 //PhasorSets phasors;
@@ -150,7 +160,7 @@ void sigterm_callback(int s){
 
 Baseline2DelaylineLinear baseline2delayline(0,nDelaylines);
 
-std::mutex m;
+std::mutex mutex_delayMachines,mutex_stateMachines;
 
 // TCP server
 std::string server_address=":27014";
@@ -238,41 +248,72 @@ int main(int argc, char *argv[]){
   for(int i=0;;i++){
     packet.clear();
     r.receive(packet);
-    T.read(packet.read(T.size()));
-    packet >> phasors;
+    uint32_t nphasors;
+    memcpy(&nphasors,packet.read(sizeof(uint32_t)),sizeof(uint32_t));
+    phasors.resize(nphasors);
+    for(size_t j=0;j<phasors.size();j++){
+      phasors[i].read1(packet.read(phasors[i].memsize1()));
+      phasors[i].read2(packet.read(phasors[i].memsize2()));
+    }
+    
+    //T.read(packet.read(T.size()));
+    //packet >> phasors;
     if(i%100==0)
       std::cout << "nframes/100=" << i/100 << std::endl;
+
+    // If there is a mismatch between phasors and delayMachines,
+    // recreate delayMachines
     
-    // Lock out dimensions changes
-    m.lock();
-      
-    // Check dimensions
-    if(!check_dimensions()){
-      m.unlock();
-      continue;
+    if(!compare(phasors,delayMachines)){
+      std::lock_guard<std::mutex> lock(mutex_delayMachines);
+      delayMachines.clear();
+      for(size_t i=0;i<phasors.size();i++)
+	delayMachines.push_back(DelayMachineDFT(phasors[i].name(),
+						nIncoherent,nSmooth));
     }
     
     // Load phasors into delay machines
+    {
+      std::lock_guard<std::mutex> lock(mutex_delayMachines);
     for(unsigned int i=0;i<phasors.size();i++)
       delayMachines[i].load(phasors[i]);
-
-    // Send SNR to SNRViewer
-    packetSNRViewer.clear();
-    T.now(); // Remove this line later 
-    T.write(packetSNRViewer.write(T.size()));
-    int nValues=delayMachines.size();
-    float snr;
-    memcpy(packetSNRViewer.write(sizeof(int)),&nValues,sizeof(int));
-    for(int i=0;i<nValues;i++){
-      snr=delayMachines[i].delay().second;
-      memcpy(packetSNRViewer.write(sizeof(float)),&snr,sizeof(float));
     }
-    ssnr.send(packetSNRViewer);
-      
+
+    // This should be moved into TCP sessions
+    // Send SNR to SNRViewer
+    // packetSNRViewer.clear();
+    // T.now(); // Remove this line later 
+    // T.write(packetSNRViewer.write(T.size()));
+    // int nValues=delayMachines.size();
+    // float snr;
+    // memcpy(packetSNRViewer.write(sizeof(int)),&nValues,sizeof(int));
+    // for(int i=0;i<nValues;i++){
+    //   snr=delayMachines[i].snr();
+    //   memcpy(packetSNRViewer.write(sizeof(float)),&snr,sizeof(float));
+    // }
+    // ssnr.send(packetSNRViewer);
+
+    if(!compare(delayMachines,stateMachines)){
+      std::lock_guard<std::mutex> lock(mutex_stateMachines);
+      int state;
+      if(active)
+	state=STATE_SEARCH;
+      else
+	state=STATE_STOP;
+      stateMachines.clear();
+      for(size_t i=0;i<delayMachines.size();i++)
+	stateMachines.push_back(FringeTrackerStateMachine(delayMachines[i].name(),
+							  state));
+    }
+    
     // Load delays into state machines
-    for(unsigned int i=0;i<delayMachines.size();i++){
-      stateMachines[i].loadDelay(delayMachines[i].delay());
-      stateMachines[i].advance();
+    {
+      std::lock_guard<std::mutex> lock(mutex_stateMachines);
+      for(unsigned int i=0;i<delayMachines.size();i++){
+	stateMachines[i].loadDelay(delayMachines[i].delay(),
+				   delayMachines[i].snr());
+	stateMachines[i].advance();
+      }
     }
     
     // Load baseline movements into delay line movement calculator
@@ -287,8 +328,6 @@ int main(int argc, char *argv[]){
       
     // Send baseline movements to delay line interface
     Delays<float> delaylinemovements=baseline2delayline.delaylineMovements();
-
-    m.unlock();
 
     //std::cout << delaylinemovements << std::endl;
     packet.clear();
@@ -324,14 +363,15 @@ int main(int argc, char *argv[]){
 void parse_args(int argc, char *argv[]){
   help.help(argc,argv);
   
-  std::vector<FringeTrackerBaselineSpec> baselinespecs;
+  //std::vector<FringeTrackerBaselineSpec> baselinespecs;
   
   for(int i=1;i<argc;i++){
-    if(strcmp(argv[i],"--baseline")==0){
+    /*if(strcmp(argv[i],"--baseline")==0){
       baselinespecs.push_back(FringeTrackerBaselineSpec(argv[i+1],atoi(argv[i+2]),atof(argv[i+3]),atof(argv[i+4]),atoi(argv[i+5]),atoi(argv[i+6]),atoi(argv[i+7])));
       i+=7;
     }
-    else if(strcmp(argv[i],"--receiver-phasors")==0){
+    else*/
+    if(strcmp(argv[i],"--receiver-phasors")==0){
       i++;
       receiver_phasors=argv[i];
     }
@@ -398,51 +438,74 @@ void parse_args(int argc, char *argv[]){
     }
   }
 
-  if(baselinespecs.size()>0)
-    setup_fringe_tracker(baselinespecs);
+  // if(baselinespecs.size()>0)
+  //   setup_fringe_tracker(baselinespecs);
 
 }
 
-
-#include <iostream>
-bool check_dimensions(){
-  if(phasors.size()!=delayMachines.size()){
-    std::cout << "tracker: number of baselines mismatched: delayMachines: "
-	      << delayMachines.size() << ", phasors: " << phasors.size()
-	      << std::endl;
+bool compare(const std::vector<amjInterferometry::Phasors<float> > &phasors,
+	     const std::vector<DelayMachineDFT> &delayMachines){
+  if(phasors.size()!=delayMachines.size())
     return false;
-  }
   
-  for(unsigned int i=0;i<phasors.size();i++)
-    if(phasors[i].size()!=delayMachines[i].size()){
-      std::cout << "tracker: number of wavelengths mismatched on baseline "
-		<< stateMachines[i].name() << " (" << i << "): delayMachines: "
-		<< delayMachines[i].size() << ", phasors: "
-		<< phasors[i].size() << std::endl;
+  for(size_t i=0;i<phasors.size();i++)
+    if(phasors[i].name()!=delayMachines[i].name())
       return false;
-    }
   
   return true;
 }
 
-void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
-  int state;
-  if(active)
-    state=STATE_SEARCH;
-  else
-    state=STATE_STOP;
-  // Next create the new fringe tracker objects
-  delayMachines.clear();
-  stateMachines.clear();
-  for(unsigned int i=0;i<s.size();i++){
-    delayMachines.push_back(DelayMachineGD(s[i].name(),s[i].L(),s[i].nOver(),
-					   s[i].nIncoherent(),s[i].nSmooth()));
-    stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
-  }
-	
-  baseline2delayline=Baseline2DelaylineLinear(s.size(),nDelaylines);
-  flag_resizetrackerstats=true;
+bool compare(const std::vector<DelayMachineDFT> &delayMachines,
+	     const std::vector<FringeTrackerStateMachine> &stateMachines){
+  if(stateMachines.size()!=delayMachines.size())
+    return false;
+
+  for(size_t i=0;i<delayMachines.size();i++)
+    if(delayMachines[i].name()!=stateMachines[i].name())
+      return false;
+
+  return true;
 }
+
+// #include <iostream>
+// bool check_dimensions(){
+//   if(phasors.size()!=delayMachines.size()){
+//     std::cout << "tracker: number of baselines mismatched: delayMachines: "
+// 	      << delayMachines.size() << ", phasors: " << phasors.size()
+// 	      << std::endl;
+//     return false;
+//   }
+  
+//   for(unsigned int i=0;i<phasors.size();i++)
+//     if(phasors[i].size()!=delayMachines[i].size()){
+//       std::cout << "tracker: number of wavelengths mismatched on baseline "
+// 		<< stateMachines[i].name() << " (" << i << "): delayMachines: "
+// 		<< delayMachines[i].size() << ", phasors: "
+// 		<< phasors[i].size() << std::endl;
+//       return false;
+//     }
+  
+//   return true;
+// }
+
+// void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
+//   int state;
+//   if(active)
+//     state=STATE_SEARCH;
+//   else
+//     state=STATE_STOP;
+//   // Next create the new fringe tracker objects
+//   delayMachines.clear();
+//   stateMachines.clear();
+//   for(unsigned int i=0;i<s.size();i++){
+//     delayMachines.push_back(DelayMachineGD(s[i].name(),s[i].L(),s[i].nOver(),
+// 					   s[i].nIncoherent(),s[i].nSmooth()));
+//     stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
+//   }
+	
+//   baseline2delayline=Baseline2DelaylineLinear(s.size(),nDelaylines);
+//   flag_resizetrackerstats=true;
+// }
 
 // void* sample_pspec(void *dummy){
 //   amjComEndpointUDP s("",sender_pspec);
@@ -467,50 +530,55 @@ void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
 // }
 
 // This should remain, to sample tracker stats, but it should not send anything
-void *sample_tracker_stats(void *dummy){
-  amjComEndpointUDP s("",sender_tracker_stats);
-  amjPacket packet;
-  unsigned int sender_tracker_time_since_report=0;
-  m.lock();
-  if(flag_resizetrackerstats)
-    resizetrackerstats();
-  flag_resizetrackerstats=false;
-  m.unlock();
-  for(;;){
-    m.lock();
-    for(unsigned int i=0;i<stats.size();i++)
-      stats[i].update(stateMachines[i].state());
-    m.unlock();
-    if(sender_tracker_time_since_report>=sender_tracker_stats_report_interval){
-      packet.clear();
-      packet << baselinenames;
-      packet << statenames;
-      for(unsigned int i=0;i<stats.size();i++){
-	packet << stats[i].stats();
-	stats[i].clear();
-      }
-      s.send(packet);
-      sender_tracker_time_since_report=0;
-    }
-    else
-      sender_tracker_time_since_report+=sender_tracker_stats_sample_interval;
-    usleep(1000*sender_tracker_stats_sample_interval);
-  }
-}
+ void *sample_tracker_stats(void *dummy){
+   for(;;){
+    
+     sleep(1);
+   }
 
-void resizetrackerstats(){
-  unsigned int nbaselines=stateMachines.size();
-  unsigned int nstates=stateMachines[0].nstates();
-  baselinenames.resize(nbaselines);
-  statenames.resize(nstates);
-  stats.resize(nbaselines);
-  for(unsigned int i=0;i<nbaselines;i++){
-    baselinenames[i]=stateMachines[i].name();
-    stats[i].resize(nstates);
-  }
-  for(unsigned int i=0;i<nstates;i++)
-    statenames[i]=stateMachines[0].stateName(i);
-}
+//   amjComEndpointUDP s("",sender_tracker_stats);
+//   amjPacket packet;
+//   unsigned int sender_tracker_time_since_report=0;
+//   m.lock();
+//   if(flag_resizetrackerstats)
+//     resizetrackerstats();
+//   flag_resizetrackerstats=false;
+//   m.unlock();
+//   for(;;){
+//     m.lock();
+//     for(unsigned int i=0;i<stats.size();i++)
+//       stats[i].update(stateMachines[i].state());
+//     m.unlock();
+//     if(sender_tracker_time_since_report>=sender_tracker_stats_report_interval){
+//       packet.clear();
+//       packet << baselinenames;
+//       packet << statenames;
+//       for(unsigned int i=0;i<stats.size();i++){
+// 	packet << stats[i].stats();
+// 	stats[i].clear();
+//       }
+//       s.send(packet);
+//       sender_tracker_time_since_report=0;
+//     }
+//     else
+//       sender_tracker_time_since_report+=sender_tracker_stats_sample_interval;
+//     usleep(1000*sender_tracker_stats_sample_interval);
+//   }
+ }
+
+// void resizetrackerstats(){
+//   unsigned int nbaselines=stateMachines.size();
+//   unsigned int nstates=stateMachines[0].nstates();
+//   baselinenames.resize(nbaselines);
+//   statenames.resize(nstates);
+//   stats.resize(nbaselines);
+//   for(unsigned int i=0;i<nbaselines;i++){
+//     baselinenames[i]=stateMachines[i].name();
+//     stats[i].resize(nstates);
+//   }
+//   for(unsigned int i=0;i<nstates;i++)
+//     statenames[i]=stateMachines[0].stateName(i);
+// }
 
 // this should be replaced with similar code in TCP sessions
 // void *tracker_controller_receiver(void *dummy){
@@ -586,35 +654,21 @@ void server_status(amjCom::Server,amjCom::Status s){
 void server_session_receive(amjCom::Session s, amjCom::Packet &p){
   char c=p.read(1)[0];
 
-  {
-    std::cout << "server_session_receive: received: " << c << std::endl;
-    std::lock_guard<std::mutex> lock(m);
-
-    if(c=='P'){ // Send a power spectrum
-      //m.lock();
-      std::vector<std::string> names;
-      std::vector<PowerSpectrum> pspecs;
-      for(unsigned int i=0;i<delayMachines.size();i++){
-	names.push_back(delayMachines[i].name());
-	pspecs.push_back(delayMachines[i].p());
-      }
-      //m.unlock();
-      amjPacket _p;
-      amjCom::Packet p;
-      _p << names << pspecs;
-      p.write(_p.raw(),_p.size());
-      std::cout << "_p.size()=" << _p.size() << ", p.size()=" << p.size()
-		<< std::endl;
-      s->send(p);
+  std::cout << "server_session_receive: received: " << c << std::endl;
+  
+  if(c=='P'){ // Send a set of power spectra
+    amjCom::Packet p;
+    {
+      std::lock_guard<std::mutex> lock(mutex_delayMachines);
+      for(unsigned int i=0;i<delayMachines.size();i++)
+	delayMachines[i].p().write(p.write(delayMachines[i].p().memsize()));
     }
-    else{
-      std::cout << "server_session_receiver: unrecognized command: "
-		<< c << ". ignoring" << std::endl;
-    }
-    
+    s->send(p);
   }
-      
-
+  else{
+    std::cout << "server_session_receiver: unrecognized command: "
+	      << c << ". ignoring" << std::endl;
+  }  
 }
 
 void server_session_status(amjCom::Session,amjCom::Status s){

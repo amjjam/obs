@@ -8,7 +8,7 @@ ifndef LIB
 	LIB=-L/opt/amj/lib
 endif
 
-LIBS=-lamjCom -lamjTime
+LIBS=-lamjCom -lamjTime -lamjArg
 LDFLAGS= $(LIB)
 
 FLAGS=-Wall -g $(INC)
@@ -18,13 +18,10 @@ CPPFLAGS=$(FLAGS)
 #CPPFLAGS=-Wall -g -I/opt/amjCom/include -L/opt/amjCom/lib -I/opt/amj/include -L/opt/amj/lib
 CPP=g++ $(CPPFLAGS)
 
-TRACKER_SRC=tracker.C DelayMachine.C DelayMachineGD.C \
+TRACKER_SRC=tracker.C DelayMachine.C \
+	DelayMachineDFT.C \
 	FringeTrackerStateMachine.C \
-	Baseline2Delayline.C Baseline2DelaylineLinear.C \
-	../../shared/src/Phasors.C \
-	../../shared/src/PowerSpectrum.C \
-	../../shared/src/Help.C \
-	../../shared/src/Wavelengths.C
+	Baseline2Delayline.C Baseline2DelaylineLinear.C
 TRACKER_OBJ=$(TRACKER_SRC:.C=.o)
 
 all: FringeTracker
