@@ -660,6 +660,8 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
     amjCom::Packet p;
     {
       std::lock_guard<std::mutex> lock(mutex_delayMachines);
+      uint32_t n=delayMachines.size();
+      memcpy(p.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
       for(unsigned int i=0;i<delayMachines.size();i++)
 	delayMachines[i].p().write(p.write(delayMachines[i].p().memsize()));
     }
