@@ -16,7 +16,7 @@ CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
 
-SIMULATOR_SRC=simulator.C DelaylineSimulator.C PhasorsSim.C \
+SIMULATOR_SRC=simulator.C DelaylineSimulator.C \
 	ExternalDelaySimulator.C ../../shared/src/Help.C \
 	../../shared/src/Wavelengths.C 
 SIMULATOR_OBJ=$(SIMULATOR_SRC:.C=.o)

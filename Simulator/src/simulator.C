@@ -56,7 +56,8 @@ Help help({
     "     <float> coherence time in ms",
     "--sender-frames <string>",
     "  A shared memory for sending simulated frames.",
-    "  Format: /<name>:nbuffers:buffersize."
+    "  Format: /<name>:nbuffers:buffersize",
+    "  default: /frames:2:400000",
     "--sender-frames2 <string> <int>",
     "  A shared memory communicator for sending every <int> simulated frame.",
     "--simlog <string> a file into which the simulator log is written",
@@ -118,7 +119,7 @@ Help help({
 #include <fstream>
 
 #include "../include/DelaylineSimulator.H"
-#include "../include/PhasorsSim.H"
+//#include "../include/PhasorsSim.H"
 #include "../include/ExternalDelaySimulator.H"
 
 void parse_args(int argc, char *argv[]);
@@ -137,7 +138,7 @@ std::string sender_phasors;
 std::string sender_phasors2;
 int interval_phasors2;
 struct timespec last_phasors2;
-std::string sender_frames;
+std::string sender_frames="/frames:2:400000";
 std::string sender_frames2;
 int sender_frames2_interval;
 std::string simlog;
@@ -163,13 +164,13 @@ bool debug=false;
 
 //std::string sender_frames;
 
-struct PhasorsSim2{
-  int dlm;
-  int dlp;
-  PhasorsSim sim;
-};
+// struct PhasorsSim2{
+//   int dlm;
+//   int dlp;
+//   PhasorsSim sim;
+// };
 
-std::vector<struct PhasorsSim2> phasorssims;
+//std::vector<struct PhasorsSim2> phasorssims;
 ExternalDelaySimulator externaldelaysimulator(nDelaylines);
 
 int main(int argc, char *argv[]){
@@ -198,59 +199,58 @@ int main(int argc, char *argv[]){
     externaldelays(nDelaylines);
 
   // Initialize the frame simulator
-  std::vector<Beam> beams{
-    Beam(0,13,[&totaldelays](double t)->double{return totaldelays[0];},
-	 [](double L)->double{return beamirradiances[0];}),
-    Beam(26,13,[&totaldelays](double t)->double{return totaldelays[1];},
-	 [](double L)->double{return beamirradiances[1];}),
-    Beam(78,13,[&totaldelays](double t)->double{return totaldelays[2];},
-	 [](double L)->double{return beamirradiances[2];})};
-
-  std::vector<Baseline> baselines{
-    Baseline("baseline1",beams[0],beams[1],
+  std::vector<amjFourier::Beam> beams{
+    amjFourier::Beam(0,13,[&totaldelays](double t)->double{return totaldelays[0];},
+		     [](double L)->double{return beamirradiances[0];}),
+    amjFourier::Beam(26,13,[&totaldelays](double t)->double{return totaldelays[1];},
+		     [](double L)->double{return beamirradiances[1];}),
+    amjFourier::Beam(78,13,[&totaldelays](double t)->double{return totaldelays[2];},
+		     [](double L)->double{return beamirradiances[2];})};
+  
+  std::vector<amjFourier::Baseline> baselines{
+    amjFourier::Baseline("baseline1",beams[0],beams[1],
+			 [](double L)->std::complex<double>{return 1;}),
+    amjFourier::Baseline("baseline2",beams[1],beams[2],
 	     [](double L)->std::complex<double>{return 1;}),
-    Baseline("baseline2",beams[1],beams[2],
-	     [](double L)->std::complex<double>{return 1;}),
-    Baseline("baseline3",beams[2],beams[0],
+    amjFourier::Baseline("baseline3",beams[2],beams[0],
 	     [](double L)->std::complex<double>{return 1;})};
   
-  FourierSim f(beams,baselines,nL,nF,
-	       [](int i)->double{return 1/(1+(1/2.5-1)/nL*i);},
-	       [](int i)->double{return (1/(1+(1/2.5-1)/nL*(i+1))-1/(1+(1/2.5-1)/nL*(i-1)));});
+  amjFourier::Sim simulator(beams,baselines);
   
-  Frame<double> framed(nL,nF);
-  Frame<uint16_t> frameu(nL,nF);
-  double nn;
-  std::vector<double> n;
-  std::vector<double> nv;
-  std::vector<double> nv2;
+  amjFourier::Frame<double> framed;
+  amjFourier::Frame<int16_t> framei;
+
+  // double nn;
+  // std::vector<double> n;
+  // std::vector<double> nv;
+  // std::vector<double> nv2;
   
-  long seed=1;
+  //long seed=1;
 
   double tt[100];
 
   // Open the simlog and write the header
-  if(simlog.size()>0){
-    fpsimlog.open(simlog.c_str(),std::ios::binary|std::ios::out);
-    fpsimlog.write((char *)&nDelaylines,sizeof(int));
-    int nBaselines=baselines.size();
-    fpsimlog.write((char *)&nBaselines,sizeof(int));
-    int j;
-    for(int i=0;i<nBaselines;i++){
-      fpsimlog.write(baselines[i].name().c_str(),baselines[i].name().size()+1);
-      j=i+1;
-      fpsimlog.write((char *)&j,sizeof(int));
-      j=j+1;
-      if(j==4) j=1;
-      fpsimlog.write((char *)&j,sizeof(int));
-      fpsimlog.write((char *)&nL,sizeof(int));
-      fpsimlog.write((char *)&L0,sizeof(double));
-      fpsimlog.write((char *)&L1,sizeof(double));
-    }
-    f.frame(0,framed,nn,n,nv,nv2);
-    for(int i=0;i<nBaselines;i++)
-      fpsimlog.write((char *)&nv2[i],sizeof(double));
-  }
+  // if(simlog.size()>0){
+  //   fpsimlog.open(simlog.c_str(),std::ios::binary|std::ios::out);
+  //   fpsimlog.write((char *)&nDelaylines,sizeof(int));
+  //   int nBaselines=baselines.size();
+  //   fpsimlog.write((char *)&nBaselines,sizeof(int));
+  //   int j;
+  //   for(int i=0;i<nBaselines;i++){
+  //     fpsimlog.write(baselines[i].name().c_str(),baselines[i].name().size()+1);
+  //     j=i+1;
+  //     fpsimlog.write((char *)&j,sizeof(int));
+  //     j=j+1;
+  //     if(j==4) j=1;
+  //     fpsimlog.write((char *)&j,sizeof(int));
+  //     fpsimlog.write((char *)&nL,sizeof(int));
+  //     fpsimlog.write((char *)&L0,sizeof(double));
+  //     fpsimlog.write((char *)&L1,sizeof(double));
+  //   }
+  //   f.frame(0,framed,nn,n,nv,nv2);
+  //   for(int i=0;i<nBaselines;i++)
+  //     fpsimlog.write((char *)&nv2[i],sizeof(double));
+  // }
   
   // Start the timer
   struct itimerval dt={{0,(long int)(interval*1000*sim2wall)},{1,0}};
@@ -294,38 +294,39 @@ int main(int argc, char *argv[]){
       if(debug)
 	std::cout << "frame" << std::endl;
       clock_gettime(CLOCK_MONOTONIC,&t2);
-      f.frame(0,framed,nn,n,nv,nv2);
-      poisson<double,uint16_t>(framed,frameu,seed);
+
+      simulator(framed);//f.frame(0,framed,nn,n,nv,nv2);
+      framei=framed;
+      //poisson<double,int16_t>(framed,frameu,seed);
       clock_gettime(CLOCK_MONOTONIC,&t3);
       tt[i%100]=(t3.tv_sec-t2.tv_sec)+(double)(t3.tv_nsec-t2.tv_nsec)/1e9;
       packetf.clear();
-      T.write(packet.write(T.size()));
-      packetf << frameu;
+      framei.write(packetf.write(framei.size()));
       senderf.send(packetf);
-      if(sender_frames2.size()>0&&(i%sender_frames2_interval)==0){
-	if(debug)
-	  std::cout << "frame2" << std::endl;
-	senderf2.send(packetf);
-      }
+      // if(sender_frames2.size()>0&&(i%sender_frames2_interval)==0){
+      // 	if(debug)
+      // 	  std::cout << "frame2" << std::endl;
+      // 	senderf2.send(packetf);
+      // }
       // Write to file
-      if(fpsimlog.is_open()){
-	struct timespec t=T.toTimespec();
-	int32_t tt=t.tv_sec;
-	fpsimlog.write((char *)&tt,sizeof(int32_t));
-	tt=t.tv_nsec;
-	fpsimlog.write((char *)&tt,sizeof(int32_t));
-	fpsimlog.write((char *)&nn,sizeof(double));
-	for(unsigned int i=0;i<baselines.size();i++)
-	  fpsimlog.write((char *)&n[i],sizeof(double));
-	for(unsigned int i=0;i<baselines.size();i++)
-	  fpsimlog.write((char *)&nv[i],sizeof(double));
-	for(unsigned int i=0;i<baselines.size();i++)
-	  fpsimlog.write((char *)&nv2[i],sizeof(double));
-	for(int i=0;i<nDelaylines;i++)
-	  fpsimlog.write((char *)&totaldelays[i],sizeof(double));
-	for(int i=0;i<nDelaylines;i++)
-	  fpsimlog.write((char *)&externaldelays[i],sizeof(double));
-      }
+      // if(fpsimlog.is_open()){
+      // 	struct timespec t=T.toTimespec();
+      // 	int32_t tt=t.tv_sec;
+      // 	fpsimlog.write((char *)&tt,sizeof(int32_t));
+      // 	tt=t.tv_nsec;
+      // 	fpsimlog.write((char *)&tt,sizeof(int32_t));
+      // 	fpsimlog.write((char *)&nn,sizeof(double));
+      // 	for(unsigned int i=0;i<baselines.size();i++)
+      // 	  fpsimlog.write((char *)&n[i],sizeof(double));
+      // 	for(unsigned int i=0;i<baselines.size();i++)
+      // 	  fpsimlog.write((char *)&nv[i],sizeof(double));
+      // 	for(unsigned int i=0;i<baselines.size();i++)
+      // 	  fpsimlog.write((char *)&nv2[i],sizeof(double));
+      // 	for(int i=0;i<nDelaylines;i++)
+      // 	  fpsimlog.write((char *)&totaldelays[i],sizeof(double));
+      // 	for(int i=0;i<nDelaylines;i++)
+      // 	  fpsimlog.write((char *)&externaldelays[i],sizeof(double));
+      // }
     }
   }
   
@@ -382,13 +383,13 @@ void parse_args(int argc, char *argv[]){
       i++;
       interval=atof(argv[i]);
     }
-    else if(strcmp(argv[i],"--baseline")==0){
-      phasorssims.push_back({atoi(argv[i+2])-1,atoi(argv[i+3])-1,
-	    PhasorsSim(argv[i+1],atoi(argv[i+4]),atof(argv[i+5]),
-		       atof(argv[i+6]),atof(argv[i+7]),atof(argv[i+8]),
-		       atoi(argv[i+9]))});
-      i+=9;
-    }
+    // else if(strcmp(argv[i],"--baseline")==0){
+    //   phasorssims.push_back({atoi(argv[i+2])-1,atoi(argv[i+3])-1,
+    // 	    PhasorsSim(argv[i+1],atoi(argv[i+4]),atof(argv[i+5]),
+    // 		       atof(argv[i+6]),atof(argv[i+7]),atof(argv[i+8]),
+    // 		       atoi(argv[i+9]))});
+    //   i+=9;
+    // }
     else if(strcmp(argv[i],"--externaldelaymodel")==0){
       int index,function;
       i++;
