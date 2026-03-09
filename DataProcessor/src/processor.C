@@ -165,9 +165,9 @@ int main(int argc, char *argv[]){
   amjPacket fpacket; // For input frames
   amjPacket ppacket; // For output phasors to tracker
 
-  amjFourier::Frame<int16_t> rframe;
-  amjFourier::Frame<float> bframe,tframe;
   amjFourier::CalcPhasors calcphasors;
+  calcphasors.set_channels(150,106);
+  
   std::vector<amjInterferometry::Phasors<> > phasors;
     
   // For counting fps
@@ -177,6 +177,7 @@ int main(int argc, char *argv[]){
   for(int i=0;;i++){
     r.receive(fpacket);
     T.now(); // For couting fps
+    std::cout << "fpacket.size()=" << fpacket.size() << std::endl;
     
     if(fpacket.size()==0){
       std::cerr << "Warning: received empty packet. Skipping." << std::endl;
@@ -199,6 +200,8 @@ int main(int argc, char *argv[]){
       rframe.read1(fpacket.read(rframe.size1()));
       rframe.read2(fpacket.read(rframe.size2()));
     }
+
+    std::cout << "rframe.size()=" << rframe.size() << std::endl;
     
     if(state=='S') // Stopped, skip frame
       continue;
@@ -461,24 +464,25 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
 
   amjCom::Packet q;
   if(p.data()[0]=='D'){
-    amjFourier::Frame<float> tframe=dframe;
+    amjFourier::Frame<float> tframe(dframe);
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='R'){
-    amjFourier::Frame<float> tframe=rframe;
+    amjFourier::Frame<float> tframe(rframe);
+    std::cout << "rframe.size()=" << rframe.size() << ", tframe.size()=" << tframe.size() << std::endl;
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='T'){
     simulate_frame();
-    amjFourier::Frame<float> tframe=sframe;
+    amjFourier::Frame<float> tframe(sframe);
     std::cout << "T: " << tframe.wL() << ", " << tframe.wF() << std::endl;
     std::cout << tframe.write(q.write(tframe.size())) << std::endl;
     S->send(q);
   }
   else if(p.data()[0]=='B'){
-    amjFourier::Frame<float> tframe=bframe;
+    amjFourier::Frame<float> tframe(bframe);
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
