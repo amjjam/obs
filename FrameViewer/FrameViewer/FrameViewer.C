@@ -206,8 +206,8 @@ void FrameViewer::display_frame() {
     if (ui->checkBox_auto->isChecked()) {
         struct histogram histogram;
         framehistogram(iframe, histogram);
-        scalemin = histogrampercentile(histogram, 0.1);
-        scalemax = histogrampercentile(histogram, 0.9);
+        scalemin= histogrampercentile(histogram, 0.01);
+        scalemax= histogrampercentile(histogram, 0.99);
     } else {
         scalemin = ui->verticalSlider_min->value();
         scalemax = ui->verticalSlider_max->value();
@@ -241,9 +241,9 @@ void FrameViewer::display_frame() {
         .arg(iframe.time().yr())
         .arg(iframe.time().mo())
         .arg(iframe.time().dy())
-        .arg(iframe.time().hr(), 2)
-        .arg(iframe.time().mn(), 2)
-        .arg(iframe.time().se(), 2)
+        .arg(iframe.time().hr(), 2, 10, QChar('0'))
+        .arg(iframe.time().mn(), 2, 10, QChar('0'))
+        .arg(iframe.time().se(), 2, 10, QChar('0'))
         .arg(iframe.nL())
         .arg(iframe.nF())
         .arg(iframe.L0())
