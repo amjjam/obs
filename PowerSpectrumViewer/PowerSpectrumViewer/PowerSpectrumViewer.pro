@@ -6,7 +6,7 @@ isEmpty(prefix){
   prefix=/opt/obs
 }
 isEmpty(INC){
-  INC=/opt/amj/include /opt/QCustomPlot/include
+  INC=/opt/amj/include /opt/QCustomPlot/include /opt/amj/include/amjCom
 }
 isEmpty(LIB){
   LIB=-L/opt/amj/lib -L/opt/QCustomPlot/lib
@@ -24,7 +24,7 @@ HEADERS += powerspectrumviewer.H
 
 FORMS += powerspectrumviewer.ui
 
-LIBS += $${LIB} -lqcustomplot -lamjCom
+LIBS += $${LIB} -lqcustomplot -lamjCom -lamjInterferometry -lamjTime
 
 INCLUDEPATH += $${INC}
         
