@@ -236,14 +236,15 @@ void FrameViewer::display_frame() {
   fps_counter++;
 
   // Set information line above frame
+  amjTime time;
   QString info
     = QString("%1/%2/%3 %4:%5:%6 (nL,nF,L0,F0,wL,wF)=(%7,%8,%9,%10,%11,%12)")
-        .arg(iframe.time().yr())
-        .arg(iframe.time().mo())
-        .arg(iframe.time().dy())
-        .arg(iframe.time().hr(), 2, 10, QChar('0'))
-        .arg(iframe.time().mn(), 2, 10, QChar('0'))
-        .arg(iframe.time().se(), 2, 10, QChar('0'))
+        .arg(time.yr())
+        .arg(time.mo())
+        .arg(time.dy())
+        .arg(time.hr(), 2, 10, QChar('0'))
+        .arg(time.mn(), 2, 10, QChar('0'))
+        .arg(time.se(), 2, 10, QChar('0'))
         .arg(iframe.nL())
         .arg(iframe.nF())
         .arg(iframe.L0())
@@ -281,7 +282,7 @@ void FrameViewer::testimage(amjFourier::Frame<float> &frame) {
   amjTime T;
   T.now();
   frame.resize(height, width);
-  frame.time().now();
+  frame.time(T);
   for(int iL= 0; iL < height; iL++)
     for(int iF= 0; iF < width; iF++)
       frame[iL][iF]= (iF + iL + seed) % 256;
