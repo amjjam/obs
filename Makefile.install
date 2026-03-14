@@ -19,9 +19,9 @@ endif
 
 packages_install:
 	$(MAKE) -C packages/amjCom/src install
+	$(MAKE) -C packages/amjTime/src install
 	$(MAKE) -C packages/amjInterferometry/src install
 	$(MAKE) -C packages/amjFourier/src install
-	$(MAKE) -C packages/amjTime/src install
 	$(MAKE) -C packages/amjRandom/src install
 	$(MAKE) -C packages/amjAtmosphere/src install
 
@@ -35,9 +35,9 @@ qt_packages_install:
 
 packages_uninstall:
 	$(MAKE) -C packages/amjCom/src uninstall
+	$(MAKE) -C packages/amjTime/src uninstall
 	$(MAKE) -C packages/amjInterferometry/src uninstall
 	$(MAKE) -C packages/amjFourier/src uninstall
-	$(MAKE) -C packages/amjTime/src uninstall
 	$(MAKE) -C packages/amjAtmosphere/src uninstall
 	$(MAKE) -C packages/amjRandom/src uninstall
 
