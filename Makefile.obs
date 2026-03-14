@@ -66,7 +66,7 @@ endif
 
 ifeq ($(QT_FOUND),1)
 PowerSpectrumViewer/PowerSpectrumViewer:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include" \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include -I $(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
@@ -91,12 +91,6 @@ endif
 
 ifeq ($(QT_FOUND),1)
 obs_script:
-	echo "#!/bin/bash" > $(prefix)/bin/Obs.sh
-	echo "" >> $(prefix)/bin/Obs.sh
-	echo "export LD_LIBRARY_PATH=$(prefix)/lib" >> $(prefix)/bin/Obs.sh
-	echo "export PATH=$(PATH):$(prefix)/bin" >> $(prefix)/bin/Obs.sh
-	echo "" >> $(prefix)/bin/Obs.sh
-	echo "Obs" >> $(prefix)/bin/Obs.sh
-	echo "" >> $(prefix)/bin/Obs.sh
-	chmod u+x $(prefix)/bin/Obs.sh
+	$(MAKE) -C Obs/Obs -f Makefile.script prefix=$(prefix) \
+	$(MAKECMDGOALS)
 endif
