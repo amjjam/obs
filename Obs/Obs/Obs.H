@@ -42,6 +42,7 @@ private:
   Config config;
   QString logfilename;
   std::ofstream logstream;
+  QProcess ssh_proc;
   void checkbox(int);
   void processstate(QProcess::ProcessState);
   void processerror(QProcess::ProcessError);
@@ -50,6 +51,14 @@ private:
   void load_config();
   void set_logfile();
   bool format_arguments(const QStringList, const Config &,QStringList &);
+  void startstopstatus_clicked(bool);
   //  void finished(int,QProcess::ExitStatus);
+  void sshstate(QProcess::ProcessState);
+  void ssherror(QProcess::ProcessError);
+  void sshstderr();
+  void sshstdout();
+  void sshfinished(int, QProcess::ExitStatus);
+  QString processStateToString(QProcess::ProcessState);
+  QString processErrorToString(QProcess::ProcessError);
 };
 #endif // OBS_H

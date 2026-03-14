@@ -1,0 +1,24 @@
+ifndef prefix
+       prefix=/opt/amj
+endif
+
+all:
+	echo "#!/bin/bash" > Obs.sh
+	echo "" >> Obs.sh
+	echo "export LD_LIBRARY_PATH=$(prefix)/lib" >> Obs.sh
+	echo "export PATH=$(PATH):$(prefix)/bin" >> Obs.sh
+	echo "" >> Obs.sh
+	echo "Obs" >> Obs.sh
+	echo "" >> Obs.sh
+	chmod u+x Obs.sh
+
+install:
+	- mkdir $(prefix)
+	- mkdir $(prefix)/bin
+	cp Obs.sh $(prefix)/bin
+
+uninstall:
+	- rm $(prefix)/bin/Obs.sh
+
+clean:
+	- rm Obs.sh

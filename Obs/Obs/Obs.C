@@ -1,8 +1,9 @@
 #include "Obs.H"
 #include "ui_Obs.h"
 
-#include <QtGlobal>
 #include <QDateTime>
+#include <QProcess>
+#include <QtGlobal>
 
 #include <iostream>
 
@@ -14,28 +15,28 @@ Obs::Obs(QWidget *parent)
 {
   ui->setupUi(this);
 
-  processes.append(process({"DataProcessor",ui->label_DataProcessor,ui->checkBox_DataProcessor,
-                            ui->amjLED_DataProcessor,"DataProcessor",
-                            {"--receiver-frames","/frames:2:10000","--sender-tracker","127.0.0.1:27001",
-                             "--sender-phasorviewer","127.0.0.1:27002","$DATAPROCESSOR"},
-                            new QProcess}));
-  processes.append(process({"FringeTracker",ui->label_FringeTracker,ui->checkBox_FringeTracker,
-                            ui->amjLED_FringeTracker,"FringeTracker",
-                            {"--active","1",
-                             "--receiver-phasors","127.0.0.1:27001",
-                             "--sender-pspec","127.0.0.1:27006","100",
-                             "--sender-movements","127.0.0.1:27004",
-                             "--sender-tracker-stats","127.0.0.1:27008","10","1000",
-                             "--sender-tracker-controller","127.0.0.1:27009","1000",
-                             "--receiver-tracker-controller","127.0.0.1:27010",
-                             "--sender-tracker-snr","127.0.0.1:27011","$FRINGETRACKER"},
-                            new QProcess}));
-  processes.append(process({"DelayController",ui->label_DelayController,ui->checkBox_DelayController,
-                            ui->amjLED_DelayController,"DelayController",
-                            {"--receiver-movements","127.0.0.1:27004",
-                             "--sender-display","127.0.0.1:27007","100",
-                             "--sender-delaylines","sim","6","127.0.0.1:27003"},
-                            new QProcess}));
+  // processes.append(process({"DataProcessor",ui->label_DataProcessor,ui->checkBox_DataProcessor,
+  //                           ui->amjLED_DataProcessor,"DataProcessor",
+  //                           {"--receiver-frames","/frames:2:10000","--sender-tracker","127.0.0.1:27001",
+  //                            "--sender-phasorviewer","127.0.0.1:27002","$DATAPROCESSOR"},
+  //                           new QProcess}));
+  // processes.append(process({"FringeTracker",ui->label_FringeTracker,ui->checkBox_FringeTracker,
+  //                           ui->amjLED_FringeTracker,"FringeTracker",
+  //                           {"--active","1",
+  //                            "--receiver-phasors","127.0.0.1:27001",
+  //                            "--sender-pspec","127.0.0.1:27006","100",
+  //                            "--sender-movements","127.0.0.1:27004",
+  //                            "--sender-tracker-stats","127.0.0.1:27008","10","1000",
+  //                            "--sender-tracker-controller","127.0.0.1:27009","1000",
+  //                            "--receiver-tracker-controller","127.0.0.1:27010",
+  //                            "--sender-tracker-snr","127.0.0.1:27011","$FRINGETRACKER"},
+  //                           new QProcess}));
+  // processes.append(process({"DelayController",ui->label_DelayController,ui->checkBox_DelayController,
+  //                           ui->amjLED_DelayController,"DelayController",
+  //                           {"--receiver-movements","127.0.0.1:27004",
+  //                            "--sender-display","127.0.0.1:27007","100",
+  //                            "--sender-delaylines","sim","6","127.0.0.1:27003"},
+  //                           new QProcess}));
   processes.append(process({"TrackerController",ui->label_TrackerController,ui->checkBox_TrackerController,
                             ui->amjLED_TrackerController,"TrackerController",
                             {},
@@ -86,6 +87,19 @@ Obs::Obs(QWidget *parent)
     connect(processes[i].process,&QProcess::readyReadStandardError,this,&Obs::processstderr);
     connect(processes[i].process,&QProcess::readyReadStandardOutput,this,&Obs::processstdout);
   }
+  connect(ui->pushButton_start, &QPushButton::clicked, this,
+          &Obs::startstopstatus_clicked);
+  connect(ui->pushButton_stop, &QPushButton::clicked, this,
+          &Obs::startstopstatus_clicked);
+  connect(ui->pushButton_status, &QPushButton::clicked, this,
+          &Obs::startstopstatus_clicked);
+
+  connect(&ssh_proc, &QProcess::stateChanged, this, &Obs::sshstate);
+  connect(&ssh_proc, &QProcess::errorOccurred, this, &Obs::ssherror);
+  connect(&ssh_proc, &QProcess::readyReadStandardError, this, &Obs::sshstderr);
+  connect(&ssh_proc, &QProcess::readyReadStandardOutput, this,
+          &Obs::sshstdout);
+  connect(&ssh_proc, &QProcess::finished, this, &Obs::sshfinished);
 }
 
 Obs::~Obs(){
@@ -247,4 +261,128 @@ bool Obs::format_arguments(const QStringList ain, const Config &c, QStringList &
   //   }
   // }
   return true;
+}
+
+void Obs::startstopstatus_clicked(bool) {
+  // Turn off buton presses until remote command is executed
+  ui->pushButton_start->setEnabled(false);
+  ui->pushButton_stop->setEnabled(false);
+  ui->pushButton_status->setEnabled(false);
+  std::cout << "startstopstatus_clicked" << std::endl;
+
+  QString userhost= "mroi@fourier.mro.nmt.edu";
+  QString remotescript= "/diska/home/mroi/amj/obs/scripts/fourier.sh";
+  QStringList params;
+  if(sender() == ui->pushButton_start)
+    params << "start" << ui->lineEdit_local_IP->text();
+  else if(sender() == ui->pushButton_stop)
+    params << "stop";
+  else if(sender() == ui->pushButton_status)
+    params << "status";
+  else {
+    std::cout << "Obs::startstopstatus_clicked: unrecognized sender()"
+              << std::endl;
+    exit(1);
+  }
+
+  QStringList args;
+  args << userhost;
+  QString command= remotescript;
+  for(const QString &p: params)
+    command+= " " + p;
+  // QProcess::quoteArg(p);
+  args << command;
+
+  // QProcess *ssh_proc= new QProcess(this);
+
+  ssh_proc.start("ssh", args);
+}
+
+void Obs::sshstate(QProcess::ProcessState state) {
+  ui->textEdit_log->append("ssh: processstate: "
+                           + processStateToString(state));
+}
+
+void Obs::ssherror(QProcess::ProcessError error) {
+  ui->textEdit_log->append(QString("ssh: processerror: ")
+                           + processErrorToString(error));
+}
+
+void Obs::sshstderr() {
+  while(ssh_proc.canReadLine()) {
+    QString msg
+      = QDateTime::currentDateTimeUtc().toString("yyyy/MM/dd hh:mm:ss")
+        + " ssh: ";
+    char buf[1024];
+    int n;
+    n= ssh_proc.readLine(buf, 1024);
+    if(n > 0)
+      msg+= buf;
+    while(msg.endsWith(' ') || msg.endsWith('\n'))
+      msg.chop(1);
+    if(ui->checkBox_stderr->isChecked())
+      ui->textEdit_log->append(msg);
+    if(logstream.is_open())
+      logstream << msg.toStdString() << std::endl;
+  }
+}
+
+void Obs::sshstdout() {
+  // QProcess *ssh_proc= qobject_cast<QProcess *>(sender());
+  while(ssh_proc.canReadLine()) {
+    QString msg
+      = QDateTime::currentDateTimeUtc().toString("yyyy/MM/dd hh:mm:ss")
+        + " ssh: ";
+    char buf[1024];
+    int n;
+    n= ssh_proc.readLine(buf, 1024);
+    if(n > 0)
+      msg+= buf;
+    while(msg.endsWith(' ') || msg.endsWith('\n'))
+      msg.chop(1);
+    if(ui->checkBox_stdout->isChecked())
+      ui->textEdit_log->append(msg);
+    if(logstream.is_open())
+      logstream << msg.toStdString() << std::endl;
+  }
+}
+
+void Obs::sshfinished(int code, QProcess::ExitStatus) {
+  ui->textEdit_log->append("ssh: exited with code: " + QString::number(code));
+  ui->pushButton_start->setEnabled(true);
+  ui->pushButton_stop->setEnabled(true);
+  ui->pushButton_status->setEnabled(true);
+}
+
+QString Obs::processStateToString(QProcess::ProcessState state) {
+  switch(state) {
+  case QProcess::NotRunning:
+    return "Not Running";
+  case QProcess::Starting:
+    return "Starting";
+  case QProcess::Running:
+    return "Running";
+  default:
+    return "Unknown State";
+  }
+}
+
+QString Obs::processErrorToString(QProcess::ProcessError error) {
+  switch(error) {
+  case QProcess::FailedToStart:
+    return "Failed to start (the program may not exist or is not executable)";
+  case QProcess::Crashed:
+    return "Crashed after starting";
+  case QProcess::Timedout:
+    return "Timed out";
+  case QProcess::WriteError:
+    return "Write error (failed to write to process stdin)";
+  case QProcess::ReadError:
+    return "Read error (failed to read from process stdout/stderr)";
+  case QProcess::UnknownError:
+    return "Unknown error";
+  default:
+    return QString("Unknown QProcess error code (%1)")
+      .arg(static_cast<int>(error));
+  }
 }
