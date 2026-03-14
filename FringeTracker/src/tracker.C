@@ -114,7 +114,7 @@ void *tracker_controller_receiver(void *);
 void *tracker_controller_sender(void *);
 void send2SNRViewer(std::vector<DelayMachineDFT> &);
 
-std::string receiver_phasors;
+std::string receiver_phasors="127.0.0.1:27001";
 std::string sender_movements;
 std::string sender_pspec;
 unsigned int sender_pspec_interval;
@@ -158,7 +158,7 @@ void sigterm_callback(int s){
   exit(0);
 }
 
-Baseline2DelaylineLinear baseline2delayline(0,nDelaylines);
+Baseline2DelaylineLinear baseline2delayline(3,nDelaylines);
 
 std::mutex mutex_delayMachines,mutex_stateMachines;
 
@@ -252,9 +252,11 @@ int main(int argc, char *argv[]){
     memcpy(&nphasors,packet.read(sizeof(uint32_t)),sizeof(uint32_t));
     phasors.resize(nphasors);
     for(size_t j=0;j<phasors.size();j++){
-      phasors[i].read1(packet.read(phasors[i].memsize1()));
-      phasors[i].read2(packet.read(phasors[i].memsize2()));
+      phasors[j].read1(packet.read(phasors[j].memsize1()));
+      phasors[j].read2(packet.read(phasors[j].memsize2()));
     }
+
+    std::cout << "phasors.size()=" << phasors.size() << std::endl;
     
     //T.read(packet.read(T.size()));
     //packet >> phasors;
@@ -661,6 +663,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
     {
       std::lock_guard<std::mutex> lock(mutex_delayMachines);
       uint32_t n=delayMachines.size();
+      std::cout << "delayMachines.size()=" << delayMachines.size() << std::endl;
       memcpy(p.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
       for(unsigned int i=0;i<delayMachines.size();i++)
 	delayMachines[i].p().write(p.write(delayMachines[i].p().memsize()));

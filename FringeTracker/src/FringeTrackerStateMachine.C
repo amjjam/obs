@@ -90,7 +90,7 @@ void FringeTrackerStateMachineConfig::print(){
 
 std::vector<float> FringeTrackerStateMachineStatistics::stats(){
   std::vector<float> _stats(counts.size());
-  float sum;
+  float sum=0;
   for(unsigned int i=0;i<counts.size();i++)
     sum+=counts[i];
   for(unsigned int i=0;i<counts.size();i++)

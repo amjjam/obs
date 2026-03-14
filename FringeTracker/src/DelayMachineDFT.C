@@ -1,11 +1,16 @@
 #include "../include/DelayMachineDFT.H"
 
+#include <numeric>
+
 DelayMachineDFT::DelayMachineDFT(std::string name,
 				 int nIncoherent, int nSmooth):
   DelayMachine(name),ipSpecHistory(0),iPeakHistory(0){
   pSpecHistory.resize(nIncoherent);
   peakHistory.resize(nSmooth);
   snrHistory.resize(nSmooth);
+  std::vector<float> delay(201);
+  std::iota(delay.begin(),delay.end(),-100.0);
+  calcpowerspectrum.set_delay(delay);
 }
 
 void DelayMachineDFT::load(const amjInterferometry::Phasors<float> &phasors){
