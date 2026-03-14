@@ -176,8 +176,8 @@ int main(int argc, char *argv[]){
   T0.now();
   for(int i=0;;i++){
     r.receive(fpacket);
-    T.now(); // For couting fps
-    std::cout << "fpacket.size()=" << fpacket.size() << std::endl;
+    T.now(); // For counting fps
+
     
     if(fpacket.size()==0){
       std::cerr << "Warning: received empty packet. Skipping." << std::endl;
@@ -201,8 +201,6 @@ int main(int argc, char *argv[]){
       rframe.read2(fpacket.read(rframe.size2()));
     }
 
-    std::cout << "rframe.size()=" << rframe.size() << std::endl;
-    
     if(state=='S') // Stopped, skip frame
       continue;
     
@@ -239,6 +237,8 @@ int main(int argc, char *argv[]){
     
     // Process frame
     calcphasors(dframe,phasors);
+    //std::cout << "phasors.size()=" << phasors.size() << std::endl;
+    //std::cout << "phasors[0].size()=" << phasors[0].size() << std::endl;
     
     // Write phasors into packet and send to tracker
     ppacket.clear();
@@ -470,15 +470,15 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
   }
   else if(p.data()[0]=='R'){
     amjFourier::Frame<float> tframe(rframe);
-    std::cout << "rframe.size()=" << rframe.size() << ", tframe.size()=" << tframe.size() << std::endl;
+    //std::cout << "rframe.size()=" << rframe.size() << ", tframe.size()=" << tframe.size() << std::endl;
     tframe.write(q.write(tframe.size()));
     S->send(q);
   }
   else if(p.data()[0]=='T'){
     simulate_frame();
     amjFourier::Frame<float> tframe(sframe);
-    std::cout << "T: " << tframe.wL() << ", " << tframe.wF() << std::endl;
-    std::cout << tframe.write(q.write(tframe.size())) << std::endl;
+    ///std::cout << "T: " << tframe.wL() << ", " << tframe.wF() << std::endl;
+    /*std::cout <<*/ tframe.write(q.write(tframe.size())) /*<< std::endl;*/
     S->send(q);
   }
   else if(p.data()[0]=='B'){
@@ -514,7 +514,7 @@ void simulate_frame(){
   sframe.F0(0);
   sframe.nL(SIMULATED_L);
   sframe.nF(SIMULATED_F);
-  sframe.time().now();
+  sframe.time(amjTime::Now());
   
   for(int iL=0;iL<SIMULATED_L;iL++)
     for(int iF=0;iF<SIMULATED_F;iF++)
