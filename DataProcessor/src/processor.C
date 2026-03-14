@@ -478,7 +478,7 @@ void server_frames_session_receive(amjCom::Session S, amjCom::Packet &p){
     simulate_frame();
     amjFourier::Frame<float> tframe(sframe);
     ///std::cout << "T: " << tframe.wL() << ", " << tframe.wF() << std::endl;
-    /*std::cout <<*/ tframe.write(q.write(tframe.size())) /*<< std::endl;*/
+    /*std::cout <<*/ tframe.write(q.write(tframe.size())); /*<< std::endl;*/
     S->send(q);
   }
   else if(p.data()[0]=='B'){
