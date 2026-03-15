@@ -26,7 +26,7 @@ clean_shm() {
 build_cmds() {
     local IP_ADDR="$1"
 
-    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngdcdsDtt0"
+    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0"
 #    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0 -sender-frames /frames:2:200000 -ofile counts $HOME/amj/tmp/amjngc.counts"
     CMD2="$SCRIPT_DIR/../bin/DataProcessor"
 #    CMD2="$SCRIPT_DIR/../bin/DataProcessor --receiver-frames /frames:2:200000 \
