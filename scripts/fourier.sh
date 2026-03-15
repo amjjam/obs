@@ -26,22 +26,26 @@ clean_shm() {
 build_cmds() {
     local IP_ADDR="$1"
 
-    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0 -sender-frames /frames:2:200000 -ofile counts $HOME/amj/tmp/amjngc.counts"
-    CMD2="$SCRIPT_DIR/../bin/DataProcessor --receiver-frames /frames:2:200000 \
-         --fringeperiod -10 --sender-tracker 127.0.0.1:27001"
-    CMD3="$SCRIPT_DIR/../bin/FringeTracker --active 1 \
-        --receiver-phasors 127.0.0.1:27001 \
-        --sender-pspec ${IP_ADDR}:27006 100 \
-        --sender-movements ${IP_ADDR}:27004 \
-        --sender-tracker-stats ${IP_ADDR}:27008 10 1000 \
-        --sender-tracker-controller ${IP_ADDR}:27009 1000 \
-        --receiver-tracker-controller ${IP_ADDR}:27010 \
-        --sender-tracker-snr ${IP_ADDR}:27011 \
-	--baseline baseline1 256 1 2.5 4 5 1"
-    CMD4="$SCRIPT_DIR/../bin/DelayController \
-        --receiver-movements ${IP_ADDR}:27004 \
-        --sender-display ${IP_ADDR}:27007 100 \
-        --sender-delaylines sim 6 ${IP_ADDR}:27003"
+    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngdcdsDtt0"
+#    CMD1="$SCRIPT_DIR/../../amjngc/NGC/ngcdcs/src/ngcdcsDtt0 -sender-frames /frames:2:200000 -ofile counts $HOME/amj/tmp/amjngc.counts"
+    CMD2="$SCRIPT_DIR/../bin/DataProcessor"
+#    CMD2="$SCRIPT_DIR/../bin/DataProcessor --receiver-frames /frames:2:200000 \
+#         --fringeperiod -10 --sender-tracker 127.0.0.1:27001"
+    CMD3="$SCRIPT_DIR/../bin/FringeTracker --active 1"
+#    CMD3="$SCRIPT_DIR/../bin/FringeTracker --active 1 \
+#        --receiver-phasors 127.0.0.1:27001 \
+#        --sender-pspec ${IP_ADDR}:27006 100 \
+#        --sender-movements ${IP_ADDR}:27004 \
+#        --sender-tracker-stats ${IP_ADDR}:27008 10 1000 \
+#        --sender-tracker-controller ${IP_ADDR}:27009 1000 \
+#        --receiver-tracker-controller ${IP_ADDR}:27010 \
+#        --sender-tracker-snr ${IP_ADDR}:27011 \
+#	--baseline baseline1 256 1 2.5 4 5 1"
+    CMD4="$SCRIPT_DIR/../bin/DelayController"
+#    CMD4="$SCRIPT_DIR/../bin/DelayController \
+#        --receiver-movements ${IP_ADDR}:27004 \
+#        --sender-display ${IP_ADDR}:27007 100 \
+#        --sender-delaylines sim 6 ${IP_ADDR}:27003"
 }
 
 start() {
