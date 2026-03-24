@@ -6,7 +6,7 @@ SUBDIRS_OBS := DataProcessor/src DelayController/src \
 
 ifeq ($(QT_FOUND),1)
 SUBDIRS_QT := DelaylineViewer/DelaylineViewer FrameViewer/FrameViewer \
-  FringeTrackerViewer/FringeTrackerViewer \
+  FringeTrackerViewer/FringeTrackerViewer DataProcessorGUI/DataProcessorGUI \
   PhasorViewer/PhasorViewer PowerSpectrumViewer/PowerSpectrumViewer \
   TrackerController/TrackerController Obs/Obs obs_script
 
@@ -23,9 +23,10 @@ DataProcessor/src:
 	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
 
 ifeq ($(QT_FOUND),1)
-DataProcessorGUI/src:
-	$(MAKE) -C $@ prefix=$(prefix) INC="-I $(prefix)/include" \
-	LIB="-L $(prefix)/lib" $(MAKECMDGOALS)
+DataProcessorGUI/DataProcessorGUI:
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include -I $(prefix)/include/amjCom" \
+	LIB="-L $(prefix)/lib")
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif
 
 DelayController/src:

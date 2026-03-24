@@ -33,6 +33,8 @@ qt_packages_install:
 	$(MAKE) -C packages/amjChart/amjChart install
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets install
+	(cd packages/amjQCom/amjQCom; $(QMAKE) prefix=$(prefix))
+	$(MAKE) -C packages/amjQCom/amjQCom install
 
 packages_uninstall:
 	$(MAKE) -C packages/amjCom/src uninstall
@@ -50,6 +52,7 @@ qt_packages_uninstall:
 	$(MAKE) -C packages/amjChart/amjChart uninstall
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets uninstall
+	$(MAKE) -C packages/amjQCom/amjQCom uninstall
 
 packages_clean:
 	$(MAKE) -C packages/amjCom/src clean
@@ -66,3 +69,4 @@ qt_packages_clean:
 	$(MAKE) -C packages/amjChart/amjChart clean
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets clean
+	$(MAKE) -C packages/amjQCom/amjQCom clean

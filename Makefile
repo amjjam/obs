@@ -94,11 +94,15 @@ dist_gather:
 #	git clone git@github.com:amjjam/obs.git $(prefix_dist)
 	mkdir $(prefix_dist)/packages
 	git clone git@github.com:amjjam/amjCom.git $(prefix_packages)/amjCom
-	(cd $(prefix_packages)/amjCom; git checkout tags/v0.11_20260314 --quiet)
+	(cd $(prefix_packages)/amjCom; git checkout tags/v0.11.1_20260324 --quiet)
+	git clone git@github.com/amjjam/amjQCom.git $(prefix_packages)/amjQCom
+	(cd $(prefix_packages)/amjQCom; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjInterferometry.git $(prefix_packages)/amjInterferometry
+	(cd $(prefix_packages)/amjInterferometry; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
-	(cd $(prefix_packages)/amjFourier; git checkout tags/test --quiet)
+	(cd $(prefix_packages)/amjFourier; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjTime.git $(prefix_packages)/amjTime
+	(cd $(prefix_packages)/amjTime; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjChart.git $(prefix_packages)/amjChart
 	git clone git@github.com:amjjam/QCustomPlot.git $(prefix_packages)/QCustomPlot
 	git clone git@github.com:amjjam/amjWidgets.git $(prefix_packages)/amjWidgets
