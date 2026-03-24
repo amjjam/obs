@@ -26,7 +26,7 @@ HEADERS += DataProcessorGUI.H
 
 FORMS += DataProcessorGUI.ui
 
-LIBS += $${LIB} -lamjCom -lamjTime
+LIBS += $${LIB} -lamjCom -lamjTime -lamjQCom
 
 INCLUDEPATH += $${INC}
 

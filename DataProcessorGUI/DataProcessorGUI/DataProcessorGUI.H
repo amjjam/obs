@@ -5,6 +5,7 @@
 #include <QTimer>
 
 #include <amjCom/amjCom.H>
+#include <amjQCom.H>
 
 #include "../../DataProcessor/include/DataProcessorStatus.H"
 
@@ -25,6 +26,7 @@ private:
   Ui::DataProcessorGUI *ui;
   QTimer update_timer;
   amjCom::Client client;
+  amjQCom::ClientStatus *clientStatus;
   void server_updated();
   void button_clicked();
   void update_timer_timeout();

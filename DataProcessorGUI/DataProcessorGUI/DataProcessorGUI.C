@@ -3,11 +3,15 @@
 
 #include <QFileDialog>
 
+#include <amjQCom.H>
+
 #include <amjCom/amjComTCP.H>
 
 DataProcessorGUI::DataProcessorGUI(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::DataProcessorGUI) {
   ui->setupUi(this);
+  clientStatus= new amjQCom::ClientStatus(this);
+  ui->statusBar->addPermanentWidget(clientStatus);
   connect(ui->lineEdit_server, &QLineEdit::editingFinished, this,
           &DataProcessorGUI::server_updated);
   connect(ui->pushButton_stop, &QPushButton::clicked, this,
@@ -34,7 +38,10 @@ void DataProcessorGUI::server_updated() {
   client= amjCom::TCP::create_client(
     ui->lineEdit_server->text().toStdString(),
     [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
-    [this](amjCom::Client c, amjCom::Status s) { client_status(c, s); });
+    [this](amjCom::Client c, amjCom::Status s) {
+      clientStatus->pushStatus(s);
+      /*client_status(c, s);*/
+    });
   client->start();
 }
 
