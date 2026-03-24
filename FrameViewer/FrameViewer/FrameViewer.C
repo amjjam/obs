@@ -3,6 +3,7 @@
 
 #include <QImage>
 #include <QPixmap>
+#include <QStatusBar>
 //#include <QMatrix>
 
 #include <amjCom/amjComMQ.H>
@@ -38,9 +39,18 @@ void ScaledImageWidget::paintEvent(QPaintEvent *) {
 }
 
 FrameViewer::FrameViewer(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::FrameViewer), seed(0), range(100000),
-      scalemin(0), scalemax(range), fps_counter(0) {
+  : QMainWindow(parent), ui(new Ui::FrameViewer), seed(0), range(100000),
+    scalemin(0), scalemax(range) {
   ui->setupUi(this);
+  // Add labels to the status bar
+  frameInfoLabel= new QLabel("Frame info");
+  rateCounter= new amjWidgets::RateCounter("fps:", 1000, this);
+  ui->statusBar->addPermanentWidget(rateCounter);
+  clientStatus= new amjQCom::ClientStatus(this);
+  ui->statusBar->addPermanentWidget(clientStatus);
+  statusBar()->addWidget(frameInfoLabel);
+  statusBar()->addPermanentWidget(clientStatus);
+
   update_scale();
   connect(ui->radioButton_none,
           &QRadioButton::toggled,
@@ -58,9 +68,12 @@ FrameViewer::FrameViewer(QWidget *parent)
           &FrameViewer::sliderMax_changed);
   connect(ui->verticalSlider_min, &QSlider::valueChanged, this,
           &FrameViewer::sliderMin_changed);
+  connect(this, &FrameViewer::signal_display_frame, this,
+          &FrameViewer::display_frame);
+  connect(this, &FrameViewer::signal_update_infoLabel, frameInfoLabel,
+          &QLabel::setText);
+  // for rateLabel
   send_timer.callOnTimeout(this, &FrameViewer::send_timer_timeout);
-  fps_timer.callOnTimeout(this, &FrameViewer::fps_timer_timeout);
-  fps_timer.start(1000);
 }
 
 #include <QPainter>
@@ -111,9 +124,12 @@ void FrameViewer::range_updated() {
 void FrameViewer::server_updated() {
   client.reset();
   client= amjCom::TCP::create_client(
-      ui->lineEdit_server->text().toStdString(),
-      [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
-      [this](amjCom::Client c, amjCom::Status s) { client_status(c, s); });
+    ui->lineEdit_server->text().toStdString(),
+    [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
+    [this](amjCom::Client c, amjCom::Status s) {
+      clientStatus->pushStatus(s);
+      /*emit signal_update_connectionLabel(c, s)*/;
+    });
   client->start();
 }
 
@@ -146,14 +162,7 @@ void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
       iframe[iL][iF]= v;
     }
 
-  QMetaObject::invokeMethod(
-    this, [this]() { display_frame(); }, Qt::QueuedConnection);
-}
-
-void FrameViewer::client_status(amjCom::Client, amjCom::Status s) {
-  std::cout << "Frameviewer: status: " << std::endl;
-  std::cout << "  state=" << s.statedescription() << std::endl;
-  std::cout << "  error=" << s.errormessage() << std::endl;
+  emit signal_display_frame();
 }
 
 void FrameViewer::send_timer_timeout()
@@ -164,7 +173,7 @@ void FrameViewer::send_timer_timeout()
     if (ui->radioButton_sim->isChecked()) {
         testimage(frame);
         iframe= frame;
-        display_frame();
+        emit signal_display_frame();
         return;
     }
 
@@ -186,11 +195,6 @@ void FrameViewer::send_timer_timeout()
     amjCom::Packet p;
     p.write(1)[0] = c;
     client->send(p);
-}
-
-void FrameViewer::fps_timer_timeout() {
-  ui->label_fps->setText(QString::number(fps_counter));
-  fps_counter= 0;
 }
 
 void FrameViewer::sliderMin_changed(int v) {
@@ -232,26 +236,26 @@ void FrameViewer::display_frame() {
       }
     }
 
-  ui->image->setImage(image);
-  fps_counter++;
+    ui->image->setImage(image);
+    rateCounter->count();
 
-  // Set information line above frame
-  amjTime time;
-  QString info
-    = QString("%1/%2/%3 %4:%5:%6 (nL,nF,L0,F0,wL,wF)=(%7,%8,%9,%10,%11,%12)")
-        .arg(time.yr())
-        .arg(time.mo())
-        .arg(time.dy())
-        .arg(time.hr(), 2, 10, QChar('0'))
-        .arg(time.mn(), 2, 10, QChar('0'))
-        .arg(time.se(), 2, 10, QChar('0'))
-        .arg(iframe.nL())
-        .arg(iframe.nF())
-        .arg(iframe.L0())
-        .arg(iframe.F0())
-        .arg(iframe.wL())
-        .arg(iframe.wF());
-  ui->label_frameinfo->setText(info);
+    // Set information line above frame
+    amjTime time= iframe.time();
+    QString info
+      = QString("%1/%2/%3 %4:%5:%6 (nL,nF,L0,F0,wL,wF)=(%7,%8,%9,%10,%11,%12)")
+          .arg(time.yr())
+          .arg(time.mo())
+          .arg(time.dy())
+          .arg(time.hr(), 2, 10, QChar('0'))
+          .arg(time.mn(), 2, 10, QChar('0'))
+          .arg(time.se(), 2, 10, QChar('0'))
+          .arg(iframe.nL())
+          .arg(iframe.nF())
+          .arg(iframe.L0())
+          .arg(iframe.F0())
+          .arg(iframe.wL())
+          .arg(iframe.wF());
+    ui->label_frameinfo->setText(info);
 }
 
 void FrameViewer::framehistogram(const amjFourier::Frame<int> &frame,
@@ -279,10 +283,8 @@ int FrameViewer::histogrampercentile(const struct histogram &histogram,
 
 void FrameViewer::testimage(amjFourier::Frame<float> &frame) {
   int width= 300, height= 200;
-  amjTime T;
-  T.now();
   frame.resize(height, width);
-  frame.time(T);
+  frame.time(amjTime::Now());
   for(int iL= 0; iL < height; iL++)
     for(int iF= 0; iF < width; iF++)
       frame[iL][iF]= (iF + iL + seed) % 256;

@@ -7,9 +7,13 @@
 #include <QThread>
 #include <QTimer>
 
+#include <amjQCom.H>
+
 #include <amjCom/amjCom.H>
 #include <amjFourier.H>
 #include <amjTime.H>
+
+#include <amjWidgets.H>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FrameViewer; }
@@ -30,7 +34,7 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
 private:
-    QImage image;
+  QImage image;
 };
 
 
@@ -42,21 +46,28 @@ public:
   FrameViewer(QWidget *parent = nullptr);
   ~FrameViewer();
   void receive(amjPacket);
-protected:
-           //void resizeEvent(QResizeEvent *event) override;
+signals:
+  void signal_display_frame();
+  void signal_update_infoLabel(QString);
+  void signal_update_rateLabel(int);
+
 private:
   Ui::FrameViewer *ui;
+  amjWidgets::RateCounter *rateCounter;
+  amjQCom::ClientStatus *clientStatus;
   int seed;
   int range;
   double scalemin,scalemax;
-  int fps_counter;
+
+  QLabel *frameInfoLabel;
+  QLabel *rateLabel;
+  QLabel *connectionLabel;
 
   amjFourier::Frame<float> frame;
   amjFourier::Frame<int> iframe;
   amjTime time;
   amjCom::Client client;
   QTimer send_timer;
-  QTimer fps_timer;
   void radio_none_or_sim_toggled(bool);
   void auto_clicked(Qt::CheckState);
   void range_updated();

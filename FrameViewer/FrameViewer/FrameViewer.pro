@@ -24,7 +24,7 @@ HEADERS += FrameViewer.H
 
 FORMS += FrameViewer.ui
 
-LIBS += $${LIB} -lamjCom -lamjTime
+LIBS += $${LIB} -lamjCom -lamjTime -lamjQCom -lamjWidgets
 
 INCLUDEPATH += $${INC}
         
