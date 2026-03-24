@@ -10,23 +10,21 @@ std::mutex mutex_ps, mutex_rate_counter;
 PowerSpectrumViewer::PowerSpectrumViewer(QWidget *parent)
   : QMainWindow(parent), ui(new Ui::PowerSpectrumViewer),port(27006),rate_counter(0){
   ui->setupUi(this);
-  // socket=new QUdpSocket(this);
-  // socket->bind(QHostAddress::LocalHost,port);
-  // connect(socket,&QUdpSocket::readyRead,this,&PowerSpectrumViewer::receive);
+
+  timeLabel= new QLabel("Date and Time");
+  rateLabel= new QLabel("Rate");
+  clientStatus= new amjQCom::ClientStatus;
+  statusBar()->addWidget(timeLabel);
+  statusBar()->addPermanentWidget(rateLabel);
+  statusBar()->addPermanentWidget(clientStatus);
+
   connect(ui->lineEdit_server, &QLineEdit::editingFinished, this,
           &PowerSpectrumViewer::server_updated);
   connect(ui->lineEdit_interval, &QLineEdit::editingFinished, this,
           &PowerSpectrumViewer::request_timer_update);
   connect(this, &PowerSpectrumViewer::signal_update_display, this,
           &PowerSpectrumViewer::update_display);
-  // Add labels to the status bar
-  timeLabel= new QLabel("Date and Time");
-  rateLabel= new QLabel("Rate");
-  connectionLabel= new QLabel("Connection status");
-  statusBar()->addWidget(timeLabel);
-  statusBar()->addPermanentWidget(rateLabel);
-  statusBar()->addPermanentWidget(connectionLabel);
-  // std::cout << "started" << std::endl;
+
   _colors={Qt::red,Qt::green,Qt::blue,Qt::magenta,Qt::cyan};
   request_timer.callOnTimeout(this, &PowerSpectrumViewer::client_request);
   request_timer_update();
@@ -43,7 +41,9 @@ void PowerSpectrumViewer::server_updated() {
   client= amjCom::TCP::create_client(
     ui->lineEdit_server->text().toStdString(),
     [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
-    [this](amjCom::Client c, amjCom::Status s) { client_status(c, s); });
+    [this](amjCom::Client c, amjCom::Status s) {
+      clientStatus->pushStatus(s);
+    });
   client->start();
 }
 
@@ -58,22 +58,18 @@ void PowerSpectrumViewer::rate_timer_callback() {
 }
 
 void PowerSpectrumViewer::client_request() {
-  /*std::cout << "client_request: ";*/
   if(!client) {
-    /*std::cout << "not sent" << std::endl;*/
     return;
   }
   amjCom::Packet p;
   p.write(1)[0]= 'P';
   client->send(p);
-  /*std::cout << "sent" << std::endl;*/
 }
 
 void PowerSpectrumViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
   std::lock_guard<std::mutex> lock(mutex_ps);
   uint32_t n;
   memcpy(&n, p.read(sizeof(uint32_t)), sizeof(uint32_t));
-  // std::vector<amjInterferometry::PowerSpectrum<float>> ps(n);
   ps.resize(n);
   for(size_t i= 0; i < n; i++) {
     ps[i].read1(p.read(ps[i].memsize1()));
@@ -85,10 +81,6 @@ void PowerSpectrumViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
 
   std::lock_guard<std::mutex> lock2(mutex_rate_counter);
   rate_counter++;
-}
-
-void PowerSpectrumViewer::client_status(amjCom::Client, amjCom::Status s) {
-  connectionLabel->setText(QString::fromStdString(s.statedescription()));
 }
 
 void PowerSpectrumViewer::update_display() {
@@ -132,15 +124,18 @@ void PowerSpectrumViewer::update_display() {
     }
     ui->plot->graph(i)->setData(d, p);
   }
-  amjTime time= ps[0].time();
-  QString info= QString("%1/%2/%3 %4:%5:%6")
-                  .arg(time.yr())
-                  .arg(time.mo())
-                  .arg(time.dy())
-                  .arg(time.hr(), 2, 10, QChar('0'))
-                  .arg(time.mn(), 2, 10, QChar('0'))
-                  .arg(time.se(), 2, 10, QChar('0'));
-  timeLabel->setText(info);
+  if(ps.size() > 0) {
+    amjTime time= ps[0].time();
+    QString info= QString("%1/%2/%3 %4:%5:%6")
+                    .arg(time.yr())
+                    .arg(time.mo())
+                    .arg(time.dy())
+                    .arg(time.hr(), 2, 10, QChar('0'))
+                    .arg(time.mn(), 2, 10, QChar('0'))
+                    .arg(time.se(), 2, 10, QChar('0'));
+    timeLabel->setText(info);
+  } else
+    timeLabel->setText("Date and Time");
 
   ui->plot->yAxis->setTickLabels(false);
   ui->plot->rescaleAxes();

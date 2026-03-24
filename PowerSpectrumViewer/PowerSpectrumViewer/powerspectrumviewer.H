@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <qcustomplot.h>
 
+#include <amjQCom.H>
+
 #include <amjCom/amjCom.H>
 #include <amjCom/amjComTCP.H>
 #include <amjCom/amjPacket.H>
@@ -27,6 +29,7 @@ public:
 
 private:
   Ui::PowerSpectrumViewer *ui;
+  amjQCom::ClientStatus *clientStatus;
   int port;
   // amjPacket packet;
   // QUdpSocket *socket;

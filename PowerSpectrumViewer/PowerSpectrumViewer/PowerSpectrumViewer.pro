@@ -24,7 +24,7 @@ HEADERS += powerspectrumviewer.H
 
 FORMS += powerspectrumviewer.ui
 
-LIBS += $${LIB} -lqcustomplot -lamjCom -lamjInterferometry -lamjTime
+LIBS += $${LIB} -lqcustomplot -lamjCom -lamjInterferometry -lamjTime -lamjQCom
 
 INCLUDEPATH += $${INC}
         
