@@ -199,6 +199,11 @@ int main(int argc, char *argv[]){
       fpacket.reset();
       rframe.read1(fpacket.read(rframe.size1()));
       rframe.read2(fpacket.read(rframe.size2()));
+      // std::cout << "rframe: (nL,nF,L0,LF,wL,wF)=" << "(" <<rframe.nL()
+      // 		<< "," << rframe.nF() << "," << rframe.L0() << ","
+      // 		<< rframe.L0() << "," << rframe.F0() << ","
+      // 		<< rframe.wL() << "," << rframe.wF() << ") size="
+      // 		<< rframe.size() << std::endl;
     }
 
     if(state=='S') // Stopped, skip frame
