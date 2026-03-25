@@ -19,11 +19,14 @@ CONFIG += c++11 debug
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += ../../FringeTracker/src/FringeTrackerStateMachine.C \
+    BaselineConfigurator.C \
     main.C TrackerController.C
 
-HEADERS += TrackerController.H
+HEADERS += TrackerController.H \
+    BaselineConfigurator.H
 
-FORMS += TrackerController.ui
+FORMS += TrackerController.ui \
+    BaselineConfigurator.ui
 
 LIBS += $${LIB} -lamjCom -lamjWidgets
 
