@@ -256,7 +256,7 @@ int main(int argc, char *argv[]){
       phasors[j].read2(packet.read(phasors[j].memsize2()));
     }
 
-    std::cout << "phasors.size()=" << phasors.size() << std::endl;
+    //std::cout << "phasors.size()=" << phasors.size() << std::endl;
     
     //T.read(packet.read(T.size()));
     //packet >> phasors;
@@ -663,7 +663,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
     {
       std::lock_guard<std::mutex> lock(mutex_delayMachines);
       uint32_t n=delayMachines.size();
-      std::cout << "delayMachines.size()=" << delayMachines.size() << std::endl;
+      //std::cout << "delayMachines.size()=" << delayMachines.size() << std::endl;
       memcpy(p.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
       for(unsigned int i=0;i<delayMachines.size();i++)
 	delayMachines[i].p().write(p.write(delayMachines[i].p().memsize()));
