@@ -33,12 +33,13 @@ DataProcessorGUI::DataProcessorGUI(QWidget *parent)
 DataProcessorGUI::~DataProcessorGUI() { delete ui; }
 
 void DataProcessorGUI::server_updated() {
-  std::cout << "client.use_count()=" << client.use_count() << std::endl;
+  //std::cout << "client.use_count()=" << client.use_count() << std::endl;
   client.reset();
   client= amjCom::TCP::create_client(
     ui->lineEdit_server->text().toStdString(),
     [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
     [this](amjCom::Client c, amjCom::Status s) {
+      //std::cout << "s: " << s.state() << " e: " << s.error() << std::endl;
       clientStatus->pushStatus(s);
       /*client_status(c, s);*/
     });
