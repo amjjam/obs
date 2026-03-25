@@ -94,9 +94,9 @@ dist_gather:
 #	git clone git@github.com:amjjam/obs.git $(prefix_dist)
 	mkdir $(prefix_dist)/packages
 	git clone git@github.com:amjjam/amjCom.git $(prefix_packages)/amjCom
-	(cd $(prefix_packages)/amjCom; git checkout tags/v0.11.1_20260324 --quiet)
+	(cd $(prefix_packages)/amjCom; git checkout tags/v0.11.2_20260324 --quiet)
 	git clone git@github.com:amjjam/amjQCom.git $(prefix_packages)/amjQCom
-	(cd $(prefix_packages)/amjQCom; git checkout tags/v1.0.0_20260324 --quiet)
+	(cd $(prefix_packages)/amjQCom; git checkout tags/v1.0.1_20260324 --quiet)
 	git clone git@github.com:amjjam/amjInterferometry.git $(prefix_packages)/amjInterferometry
 	(cd $(prefix_packages)/amjInterferometry; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
