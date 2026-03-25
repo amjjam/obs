@@ -6,16 +6,13 @@
 
 #include "../../shared/include/Delays.H"
 
-
 DelayCommander::DelayCommander(QWidget *parent)
   : QMainWindow(parent)
-  , ui(new Ui::DelayCommander)
-{
+  , ui(new Ui::DelayCommander){
   ui->setupUi(this);
 }
 
-DelayCommander::~DelayCommander()
-{
+DelayCommander::~DelayCommander(){
   delete ui;
 }
 
