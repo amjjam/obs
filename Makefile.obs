@@ -24,7 +24,7 @@ DataProcessor/src:
 
 ifeq ($(QT_FOUND),1)
 DataProcessorGUI/DataProcessorGUI:
-	(cd $@; $(QMAKE) prefix=$(prefix) INC="-I $(prefix)/include -I $(prefix)/include/amjCom" \
+	(cd $@; $(QMAKE) prefix=$(prefix) INC="$(prefix)/include $(prefix)/include/amjCom" \
 	LIB="-L $(prefix)/lib")
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 endif

@@ -9,15 +9,16 @@ print-%  : ; @echo $* = $($*)
 
 QMAKE=qmake6
 
-packages_install: packages
+qt_packages_install: core_packages_install
 
+packages_install: core_packages_install
 ifeq ($(QT_FOUND),1)
 packages_install: qt_packages_install
 packages_uninstall: qt_packages_uninstall
 packages_clean: qt_packages_clean
 endif
 
-packages_install:
+core_packages_install:
 	$(MAKE) -C packages/amjCom/src install
 	$(MAKE) -C packages/amjTime/src install
 	$(MAKE) -C packages/amjArg/src install
@@ -33,7 +34,7 @@ qt_packages_install:
 	$(MAKE) -C packages/amjChart/amjChart install
 	(cd packages/amjWidgets/amjWidgets; $(QMAKE) prefix=$(prefix))
 	$(MAKE) -C packages/amjWidgets/amjWidgets install
-	(cd packages/amjQCom; $(QMAKE) prefix=$(prefix))
+	(cd packages/amjQCom; $(QMAKE) prefix=$(prefix) INC="$(prefix)/include $(prefix)/include/amjCom" LIB="-L $(prefix)/lib")
 	$(MAKE) -C packages/amjQCom install
 
 packages_uninstall:
