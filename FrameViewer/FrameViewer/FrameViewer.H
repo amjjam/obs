@@ -41,12 +41,10 @@ public:
   void receive(amjPacket);
 signals:
   void signal_display_frame();
-  void signal_update_infoLabel(QString);
-  void signal_update_rateLabel(int);
 
 private:
   Ui::FrameViewer *ui;
-  QLabel *frameInfoLabel;
+  amjWidgets::TimeDisplay *timeDisplay;
   amjWidgets::RateCounter *rateCounter;
   amjQCom::ClientStatus *clientStatus;
   int seed;
@@ -58,9 +56,10 @@ private:
   amjTime time;
   bool request_in_flight;
   amjCom::Client client;
-  QTimer send_timer;
+  QTimer timer;
+  char frame_type;
   mutable std::mutex frame_mutex;
-
+  mutable std::mutex state_mutex;
   
   void radio_none_or_sim_toggled(bool);
   void auto_clicked(Qt::CheckState);
@@ -72,14 +71,15 @@ private:
 
   void update_scale();
   void update_timer();
-  
-  char modeChar() const;
-  void send_timer_timeout();
+
+  void mode_changed(bool);
+  void timer_timeout();
   void fps_timer_timeout();
 
   void sliderMin_changed(int);
   void sliderMax_changed(int);
 
+  void clear_display();
   void display_frame();
   struct Histogram{
     uint64_t sum=0;

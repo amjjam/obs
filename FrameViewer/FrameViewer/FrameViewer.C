@@ -41,47 +41,48 @@ void ScaledImageWidget::paintEvent(QPaintEvent *) {
 
 FrameViewer::FrameViewer(QWidget *parent)
   : QMainWindow(parent), ui(new Ui::FrameViewer),
-    frameInfoLabel(new QLabel("Frameinfo")),
+    timeDisplay(new amjWidgets::TimeDisplay("Latest: ",this)),
     rateCounter(new amjWidgets::RateCounter("fps:",1000,this)),
     clientStatus(new amjQCom::ClientStatus(this)),seed(0), range(100000),
-    scalemin(0), scalemax(range) {
+    scalemin(0), scalemax(range),frame_type('\0'){
   ui->setupUi(this);
   // Add labels to the status bar
   ui->statusBar->addPermanentWidget(rateCounter);
   ui->statusBar->addPermanentWidget(clientStatus);
-  ui->statusBar->addWidget(frameInfoLabel);
-
+  ui->statusBar->addWidget(timeDisplay);
   update_scale();
-  connect(ui->radioButton_none,
-          &QRadioButton::toggled,
-          this,
-          &FrameViewer::radio_none_or_sim_toggled);
-  connect(ui->radioButton_sim,
-          &QRadioButton::toggled,
-          this,
-          &FrameViewer::radio_none_or_sim_toggled);
-  connect(ui->lineEdit_cadence, &QLineEdit::editingFinished, this,&FrameViewer::update_timer);
-  connect(ui->lineEdit_range, &QLineEdit::editingFinished, this,&FrameViewer::range_updated);
-  connect(ui->checkBox_auto, &QCheckBox::checkStateChanged, this,&FrameViewer::auto_clicked);
-  connect(ui->lineEdit_server, &QLineEdit::editingFinished, this,&FrameViewer::server_updated);
-  connect(ui->verticalSlider_max, &QSlider::valueChanged, this,
-          &FrameViewer::sliderMax_changed);
-  connect(ui->verticalSlider_min, &QSlider::valueChanged, this,
-          &FrameViewer::sliderMin_changed);
-  connect(this, &FrameViewer::signal_display_frame, this,
-          &FrameViewer::display_frame);
-  connect(this, &FrameViewer::signal_update_infoLabel, frameInfoLabel,
-          &QLabel::setText);
-  send_timer.callOnTimeout(this, &FrameViewer::send_timer_timeout);
+  connect(ui->radioButton_none, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->radioButton_bias, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->radioButton_diff, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->radioButton_raw, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->radioButton_test, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->radioButton_sim, &QRadioButton::toggled,
+	  this, &FrameViewer::mode_changed);
+  connect(ui->lineEdit_cadence, &QLineEdit::editingFinished,
+	  this,&FrameViewer::update_timer);
+  connect(ui->lineEdit_range, &QLineEdit::editingFinished,
+	  this,&FrameViewer::range_updated);
+  connect(ui->checkBox_auto, &QCheckBox::checkStateChanged,
+	  this,&FrameViewer::auto_clicked);
+  connect(ui->lineEdit_server, &QLineEdit::editingFinished,
+	  this,&FrameViewer::server_updated);
+  connect(ui->verticalSlider_max, &QSlider::valueChanged,
+	  this,&FrameViewer::sliderMax_changed);
+  connect(ui->verticalSlider_min, &QSlider::valueChanged,
+	  this,&FrameViewer::sliderMin_changed);
+  connect(this, &FrameViewer::signal_display_frame,
+	  this,&FrameViewer::display_frame);
+  timer.callOnTimeout(this, &FrameViewer::timer_timeout);
 }
 
 #include <QPainter>
 
 FrameViewer::~FrameViewer() { delete ui; }
-
-void FrameViewer::radio_none_or_sim_toggled(bool){
-    update_timer();
-}
 
 void FrameViewer::auto_clicked(Qt::CheckState s) {
   if(s == Qt::CheckState::Unchecked)
@@ -102,13 +103,19 @@ void FrameViewer::update_scale() {
 }
 
 void FrameViewer::update_timer() {
-    if (ui->radioButton_none->isChecked())
-        send_timer.stop();
-    else {
-      int period = std::max(1,ui->lineEdit_cadence->text().toInt());
-      ui->lineEdit_cadence->setText(QString::number(period));
-      send_timer.start(period);
-    }
+  char c;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex);
+    c=frame_type;
+  }
+  if(!c){
+    timer.stop();
+    return;
+  }
+  int period = std::max(1,ui->lineEdit_cadence->text().toInt());
+  ui->lineEdit_cadence->setText(QString::number(period));
+  timer_timeout(); // to execute immediately when timer is updated
+  timer.start(period);
 }
 
 void FrameViewer::range_updated() {
@@ -128,27 +135,20 @@ void FrameViewer::server_updated() {
 }
 
 void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
-  std::lock_guard<std::mutex> lock(frame_mutex);
-
-  request_in_flight=false;
-  
-  p.begin();
-
-  if(p.size() < 100000) {
-    std::cout << "client_receive: short packet: size=" << p.size()
-              << std::endl;
-    return;
-  }
-
-  if(ui->radioButton_sim->isChecked()) {
-    client.reset();
-    return;
-  }
-
+  {
+      std::lock_guard<std::mutex> lock(state_mutex);
+      request_in_flight=false;
+      char c;
+      memcpy(&c,p.read(1),1);
+      if(c!=frame_type) // if doesn't match current mode don't display
+	return;
+  }  
   frame.read1(p.read(frame.size1()));
   frame.read2(p.read(frame.size2()));
-
-  iframe= frame;
+  {
+    std::lock_guard<std::mutex> lock(frame_mutex);
+    iframe=frame;
+  }
   for(size_t iL= 0; iL < iframe.wL(); iL++)
     for(size_t iF= 0; iF < iframe.wF(); iF++)
       iframe[iL][iF]=std::clamp(iframe[iL][iF],-100000,100000);
@@ -156,34 +156,51 @@ void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
   emit signal_display_frame();
 }
 
-char FrameViewer::modeChar() const {
-    if (ui->radioButton_bias->isChecked()) return 'B';
-    if (ui->radioButton_diff->isChecked()) return 'D';
-    if (ui->radioButton_raw->isChecked())  return 'R';
-    if (ui->radioButton_test->isChecked()) return 'T';
-    return '\0';
+void FrameViewer::mode_changed(bool checked){
+  if (!checked) return;  // only react when button becomes active
+  
+  char new_type = '\0';
+  
+  if(ui->radioButton_bias->isChecked()) new_type = 'B';
+  else if(ui->radioButton_diff->isChecked()) new_type = 'D';
+  else if(ui->radioButton_raw->isChecked())  new_type = 'R';
+  else if(ui->radioButton_test->isChecked()) new_type = 'T';
+  else if(ui->radioButton_sim->isChecked()) new_type='S';
+  
+  {
+    std::lock_guard<std::mutex> lock(state_mutex);
+    frame_type = new_type;
+  }
+  
+  clear_display();
+  update_timer();
 }
 
-void FrameViewer::send_timer_timeout(){
-    if (ui->radioButton_none->isChecked())
-        return;
+void FrameViewer::timer_timeout(){
+  char c;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex);
+    c=frame_type;
+  }
+  if(!c)
+    return;
 
-    if (ui->radioButton_sim->isChecked()) {
-        testimage(frame);
-        iframe= frame;
-        emit signal_display_frame();
-        return;
+  if (c=='S') {
+    testimage(frame);
+    {
+      std::lock_guard<std::mutex> lock(frame_mutex);
+      iframe=frame;
     }
-
-    if (!client||request_in_flight)
-        return;
-
-    char c=modeChar();
-    if(!c) return;
-
-    amjCom::Packet p;
-    p.write(1)[0] = c;
-    client->send(p);
+    emit signal_display_frame();
+    return;
+  }
+  
+  if (!client||request_in_flight)
+    return;
+  
+  amjCom::Packet p;
+  p.write(1)[0] = c;
+  client->send(p);
 }
 
 void FrameViewer::sliderMin_changed(int v) {
@@ -192,6 +209,15 @@ void FrameViewer::sliderMin_changed(int v) {
 
 void FrameViewer::sliderMax_changed(int v) {
   ui->label_sliderMax->setText(QString::number(v));
+}
+
+void FrameViewer::clear_display(){
+  {
+    std::lock_guard<std::mutex> lock(frame_mutex);
+    iframe = amjFourier::Frame<int>();
+  }
+  ui->image->setImage(QImage());
+  ui->label_frameinfo->clear();
 }
 
 void FrameViewer::display_frame() {
@@ -205,7 +231,6 @@ void FrameViewer::display_frame() {
         scalemin = ui->verticalSlider_min->value();
         scalemax = ui->verticalSlider_max->value();
     }
-
     QImage image(iframe.wF(), iframe.wL(), QImage::Format_Grayscale8);
     const double scale=255.0/(scalemax-scalemin);
     for(int iH= 0; iH < image.height(); iH++) {
@@ -215,26 +240,16 @@ void FrameViewer::display_frame() {
 	line[iW]=static_cast<uchar>(std::clamp((iframe[iH][iW]-scalemin)*scale,
 					       0.0,255.0));
     }
-
     ui->image->setImage(image);
     rateCounter->count();
-
-    // Set information line above frame
-    amjTime time= iframe.time();
-    QString info
-      = QString("%1/%2/%3 %4:%5:%6 (nL,nF,L0,F0,wL,wF)=(%7,%8,%9,%10,%11,%12)")
-          .arg(time.yr())
-          .arg(time.mo())
-          .arg(time.dy())
-          .arg(time.hr(), 2, 10, QChar('0'))
-          .arg(time.mn(), 2, 10, QChar('0'))
-          .arg(time.se(), 2, 10, QChar('0'))
-          .arg(iframe.nL())
-          .arg(iframe.nF())
-          .arg(iframe.L0())
-          .arg(iframe.F0())
-          .arg(iframe.wL())
-          .arg(iframe.wF());
+    timeDisplay->setTime(iframe.time());
+    QString info= QString("(nL,nF,L0,F0,wL,wF)=(%1,%2,%3,%4,%5,%6)")
+                    .arg(iframe.nL())
+                    .arg(iframe.nF())
+                    .arg(iframe.L0())
+                    .arg(iframe.F0())
+                    .arg(iframe.wL())
+                    .arg(iframe.wF());
     ui->label_frameinfo->setText(info);
 }
 
