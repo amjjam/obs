@@ -102,10 +102,11 @@ dist_gather:
 	git clone git@github.com:amjjam/amjFourier.git $(prefix_packages)/amjFourier
 	(cd $(prefix_packages)/amjFourier; git checkout tags/v1.0.0_20260324 --quiet)
 	git clone git@github.com:amjjam/amjTime.git $(prefix_packages)/amjTime
-	(cd $(prefix_packages)/amjTime; git checkout tags/v1.0.0_20260324 --quiet)
+	(cd $(prefix_packages)/amjTime; git checkout tags/v1.1.0_20260327 --quiet)
 	git clone git@github.com:amjjam/amjChart.git $(prefix_packages)/amjChart
 	git clone git@github.com:amjjam/QCustomPlot.git $(prefix_packages)/QCustomPlot
 	git clone git@github.com:amjjam/amjWidgets.git $(prefix_packages)/amjWidgets
+	(cd $(prefix_packages)/amjWidgets; git checkout tags/v1.0.0_20260327 --quiet)
 	git clone git@github.com:amjjam/amjAtmosphere.git $(prefix_packages)/amjAtmosphere
 	git clone git@github.com:amjjam/amjRandom.git $(prefix_packages)/amjRandom
 	git clone git@github.com:amjjam/amjArg.git $(prefix_packages)/amjArg
