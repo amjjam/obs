@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <algorithm>
 
 Q_DECLARE_METATYPE(amjPacket);
 
@@ -39,17 +40,16 @@ void ScaledImageWidget::paintEvent(QPaintEvent *) {
 }
 
 FrameViewer::FrameViewer(QWidget *parent)
-  : QMainWindow(parent), ui(new Ui::FrameViewer), seed(0), range(100000),
+  : QMainWindow(parent), ui(new Ui::FrameViewer),
+    frameInfoLabel(new QLabel("Frameinfo")),
+    rateCounter(new amjWidgets::RateCounter("fps:",1000,this)),
+    clientStatus(new amjQCom::ClientStatus(this)),seed(0), range(100000),
     scalemin(0), scalemax(range) {
   ui->setupUi(this);
   // Add labels to the status bar
-  frameInfoLabel= new QLabel("Frame info");
-  rateCounter= new amjWidgets::RateCounter("fps:", 1000, this);
   ui->statusBar->addPermanentWidget(rateCounter);
-  clientStatus= new amjQCom::ClientStatus(this);
   ui->statusBar->addPermanentWidget(clientStatus);
-  statusBar()->addWidget(frameInfoLabel);
-  statusBar()->addPermanentWidget(clientStatus);
+  ui->statusBar->addWidget(frameInfoLabel);
 
   update_scale();
   connect(ui->radioButton_none,
@@ -72,7 +72,6 @@ FrameViewer::FrameViewer(QWidget *parent)
           &FrameViewer::display_frame);
   connect(this, &FrameViewer::signal_update_infoLabel, frameInfoLabel,
           &QLabel::setText);
-  // for rateLabel
   send_timer.callOnTimeout(this, &FrameViewer::send_timer_timeout);
 }
 
@@ -106,12 +105,9 @@ void FrameViewer::update_timer() {
     if (ui->radioButton_none->isChecked())
         send_timer.stop();
     else {
-        int period = ui->lineEdit_cadence->text().toInt();
-        if (period < 1) {
-            period = 1;
-            ui->lineEdit_cadence->setText(QString::number(period));
-        }
-        send_timer.start(ui->lineEdit_cadence->text().toInt());
+      int period = std::max(1,ui->lineEdit_cadence->text().toInt());
+      ui->lineEdit_cadence->setText(QString::number(period));
+      send_timer.start(period);
     }
 }
 
@@ -123,20 +119,19 @@ void FrameViewer::range_updated() {
 
 void FrameViewer::server_updated() {
   client.reset();
-  client= amjCom::TCP::create_client(
+  request_in_flight=false;
+  client=amjCom::TCP::create_client(
     ui->lineEdit_server->text().toStdString(),
-    [this](amjCom::Client c, amjCom::Packet &p) { client_receive(c, p); },
-    [this](amjCom::Client c, amjCom::Status s) {
-      clientStatus->pushStatus(s);
-      /*emit signal_update_connectionLabel(c, s)*/;
-    });
+    [this](amjCom::Client c, amjCom::Packet &p) {client_receive(c, p);},
+    [this](amjCom::Client, amjCom::Status s) {clientStatus->pushStatus(s);});
   client->start();
 }
 
-std::mutex frame_mutex;
 void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
   std::lock_guard<std::mutex> lock(frame_mutex);
 
+  request_in_flight=false;
+  
   p.begin();
 
   if(p.size() < 100000) {
@@ -155,18 +150,21 @@ void FrameViewer::client_receive(amjCom::Client, amjCom::Packet &p) {
 
   iframe= frame;
   for(size_t iL= 0; iL < iframe.wL(); iL++)
-    for(size_t iF= 0; iF < iframe.wF(); iF++) {
-      int v= iframe[iL][iF];
-      v= v < -100000 ? -100000 : v;
-      v= v > 100000 ? 100000 : v;
-      iframe[iL][iF]= v;
-    }
-
+    for(size_t iF= 0; iF < iframe.wF(); iF++)
+      iframe[iL][iF]=std::clamp(iframe[iL][iF],-100000,100000);
+  
   emit signal_display_frame();
 }
 
-void FrameViewer::send_timer_timeout()
-{
+char FrameViewer::modeChar() const {
+    if (ui->radioButton_bias->isChecked()) return 'B';
+    if (ui->radioButton_diff->isChecked()) return 'D';
+    if (ui->radioButton_raw->isChecked())  return 'R';
+    if (ui->radioButton_test->isChecked()) return 'T';
+    return '\0';
+}
+
+void FrameViewer::send_timer_timeout(){
     if (ui->radioButton_none->isChecked())
         return;
 
@@ -177,20 +175,11 @@ void FrameViewer::send_timer_timeout()
         return;
     }
 
-    if (!client)
+    if (!client||request_in_flight)
         return;
 
-    char c;
-    if (ui->radioButton_bias->isChecked())
-        c = 'B';
-    else if (ui->radioButton_diff->isChecked())
-        c = 'D';
-    else if (ui->radioButton_raw->isChecked())
-        c = 'R';
-    else if (ui->radioButton_test->isChecked())
-        c = 'T';
-    else
-      return;
+    char c=modeChar();
+    if(!c) return;
 
     amjCom::Packet p;
     p.write(1)[0] = c;
@@ -208,7 +197,7 @@ void FrameViewer::sliderMax_changed(int v) {
 void FrameViewer::display_frame() {
     std::lock_guard<std::mutex> lock(frame_mutex);
     if (ui->checkBox_auto->isChecked()) {
-        struct histogram histogram;
+        struct Histogram histogram;
         framehistogram(iframe, histogram);
         scalemin= histogrampercentile(histogram, 0.01);
         scalemax= histogrampercentile(histogram, 0.99);
@@ -218,22 +207,13 @@ void FrameViewer::display_frame() {
     }
 
     QImage image(iframe.wF(), iframe.wL(), QImage::Format_Grayscale8);
-    uchar *outLine;
-    int v;
+    const double scale=255.0/(scalemax-scalemin);
     for(int iH= 0; iH < image.height(); iH++) {
-      outLine
-        = image.scanLine(image.height() - 1
-                         - iH);// To flip it to display as in the ESO software
-      for(int iW= 0; iW < image.width(); iW++) {
-        v= iframe[iH][iW];
-        if(v <= scalemin)
-          outLine[iW]= 0;
-        else if(v >= scalemax)
-          outLine[iW]= 255;
-        else
-          outLine[iW]
-            = static_cast<uchar>((v - scalemin) * 256 / (scalemax - scalemin));
-      }
+      uchar *line
+        = image.scanLine(image.height()-1-iH);// To flip frame vertically
+      for(int iW= 0; iW < image.width(); iW++)
+	line[iW]=static_cast<uchar>(std::clamp((iframe[iH][iW]-scalemin)*scale,
+					       0.0,255.0));
     }
 
     ui->image->setImage(image);
@@ -259,26 +239,26 @@ void FrameViewer::display_frame() {
 }
 
 void FrameViewer::framehistogram(const amjFourier::Frame<int> &frame,
-                                 struct histogram &histogram) {
-  histogram.h.resize(200001);
-  for(unsigned int iL= 0; iL < frame.wL(); iL++)
-    for(unsigned int iF= 0; iF < frame.wF(); iF++)
-      histogram.h[frame[iL][iF] + 100000]++;
-  histogram.s= 0;
-  for(uint i= 0; i < histogram.h.size(); i++)
-    histogram.s+= histogram.h[i];
+                                 struct Histogram &histogram) {
+  histogram.bins.assign(200001,0);
+  for(size_t iL=0;iL<frame.wL();iL++)
+    for(size_t iF=0;iF<frame.wF();iF++)
+      histogram.bins[frame[iL][iF]+100000]++;
+  histogram.sum=0;
+  for(size_t i=0;i<histogram.bins.size();i++)
+    histogram.sum+=histogram.bins[i];
 }
 
-int FrameViewer::histogrampercentile(const struct histogram &histogram,
+int FrameViewer::histogrampercentile(const struct Histogram &histogram,
                                      double percentile) {
-  uint64_t threshold= percentile * histogram.s, sum= 0;
-  uint value;
-  for(value= 0; value < histogram.h.size(); value++) {
-    sum+= histogram.h[value];
-    if(sum >= threshold)
+  uint64_t threshold= percentile * histogram.sum, sum= 0;
+  unsigned int value;
+  for(value=0;value<histogram.bins.size();value++){
+    sum+=histogram.bins[value];
+    if(sum>=threshold)
       break;
   }
-  return value - 100000;
+  return value-100000;
 }
 
 void FrameViewer::testimage(amjFourier::Frame<float> &frame) {

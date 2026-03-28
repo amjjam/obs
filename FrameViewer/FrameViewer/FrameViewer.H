@@ -19,13 +19,6 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class FrameViewer; }
 QT_END_NAMESPACE
 
-class Receiver:public QThread{
-  Q_OBJECT
-public:
-signals:
-  void received(amjPacket);
-};
-
 class ScaledImageWidget : public QWidget {
     Q_OBJECT
 public:
@@ -53,21 +46,22 @@ signals:
 
 private:
   Ui::FrameViewer *ui;
+  QLabel *frameInfoLabel;
   amjWidgets::RateCounter *rateCounter;
   amjQCom::ClientStatus *clientStatus;
   int seed;
   int range;
   double scalemin,scalemax;
 
-  QLabel *frameInfoLabel;
-  QLabel *rateLabel;
-  QLabel *connectionLabel;
-
   amjFourier::Frame<float> frame;
   amjFourier::Frame<int> iframe;
   amjTime time;
+  bool request_in_flight;
   amjCom::Client client;
   QTimer send_timer;
+  mutable std::mutex frame_mutex;
+
+  
   void radio_none_or_sim_toggled(bool);
   void auto_clicked(Qt::CheckState);
   void range_updated();
@@ -78,7 +72,8 @@ private:
 
   void update_scale();
   void update_timer();
-
+  
+  char modeChar() const;
   void send_timer_timeout();
   void fps_timer_timeout();
 
@@ -86,12 +81,12 @@ private:
   void sliderMax_changed(int);
 
   void display_frame();
-  struct histogram{
-    uint64_t s;
-    std::vector<uint32_t> h;
+  struct Histogram{
+    uint64_t sum=0;
+    std::vector<uint32_t> bins;
   };
-  void framehistogram(const amjFourier::Frame<int> &, struct histogram &h);
-  int histogrampercentile(const struct histogram &, double);
+  void framehistogram(const amjFourier::Frame<int> &, struct Histogram &h);
+  int histogrampercentile(const struct Histogram &, double);
 
   void testimage(amjFourier::Frame<float> &);
 };
