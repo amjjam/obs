@@ -19,6 +19,7 @@ public:
   virtual void load(const amjInterferometry::Phasors<float> &p)=0;
   virtual float delay() const =0;
   virtual float snr() const =0;
+  virtual const amjTime &time() const =0;
 protected:
   std::string _name;
 };

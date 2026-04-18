@@ -14,7 +14,8 @@ public:
   virtual void load(const amjInterferometry::Phasors<float> &p);
   virtual float delay() const {return _delay;};
   virtual float snr() const {return _snr;}
-  const amjInterferometry::PowerSpectrum<float> &p() const {return pSpec;};
+  virtual const amjTime &time() const {return pSpec.time();}
+  const amjInterferometry::PowerSpectrum<float> &p() const {return pSpec;}
 private:
   amjInterferometry::CalcPowerSpectrumDFT<float> calcpowerspectrum;
   amjInterferometry::PowerSpectrum<float> pSpec;
