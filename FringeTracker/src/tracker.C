@@ -73,15 +73,11 @@ help({
   });
 
 #include "../include/FringeTrackerStateMachine.H"
-//#include "../include/DelayMachineGD.H"
 #include "../include/DelayMachineDFT.H"
 #include "../include/Baseline2DelaylineLinear.H"
 #include "../include/FringeTrackerBaselineSpec.H"
 
-//#include "../../shared/include/Phasors.H"
 #include "../../shared/include/Timing.H"
-//#include "../../shared/include/PowerSpectrum.H"
-//#include "../../shared/include/Delays.H"
 
 #include <mutex>
 #include <semaphore.h>
@@ -97,6 +93,7 @@ help({
 
 #include <amjCom/amjComUDP.H>
 #include <amjCom/amjComTCP.H>
+#include <amjCom/amjComSerialize.H>
 #include <amjTime.H>
 #include <amjInterferometry.H>
 
@@ -105,8 +102,6 @@ bool compare(const std::vector<amjInterferometry::Phasors<float> > &,
 	     const std::vector<DelayMachineDFT> &);
 bool compare(const std::vector<DelayMachineDFT> &,
 	     const std::vector<FringeTrackerStateMachine> &);
-//bool check_dimensions();
-//void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &);
 void* sample_pspec(void *);
 void* sample_tracker_stats(void *);
 void resizetrackerstats();
@@ -134,13 +129,16 @@ bool active=false;
 int nIncoherent=5;
 int nSmooth=1;
 
-//std::vector<std::string> names;
 std::vector<DelayMachineDFT> delayMachines;
+int32_t version_delayMachines=0;
+std::mutex mutex_delayMachines;
+
 std::vector<FringeTrackerStateMachine> stateMachines;
+int32_t version_stateMachines=0;
+std::mutex mutex_stateMachines;
 
 //PhasorSets phasors;
 std::vector<amjInterferometry::Phasors<float> > phasors;
-//std::vector<std::vector<std::complex<float> > > phasors; /* [nBl][nLambda] */
 std::vector<std::pair<float,float> > baselinemovements;
 
 // For state machine sampling and reporting
@@ -160,8 +158,6 @@ void sigterm_callback(int s){
 
 Baseline2DelaylineLinear baseline2delayline(3,nDelaylines);
 
-std::mutex mutex_delayMachines,mutex_stateMachines;
-
 // TCP server
 std::string server_address=":27014";
 std::vector<amjCom::Session> server_sessions;
@@ -173,15 +169,6 @@ void server_session_status(amjCom::Session,amjCom::Status);
 int main(int argc, char *argv[]){
   parse_args(argc,argv);
 
-  // This is replaced with the TCP sessions
-  // // Create a thread to sample the power spectra
-  // pthread_t thread_pspec;
-  // if(sender_pspec.size()>0)
-  //   if(pthread_create(&thread_pspec,nullptr,sample_pspec,nullptr)!=0){
-  //     perror("could not start thread_pspec");
-  //     exit(EXIT_FAILURE);
-  //   }
-
   // This should remain, to sample tracker stats, but should not send anything
   // Create a thread to sample the fringe trackers states and send statistics
   pthread_t thread_tracker_stats;
@@ -191,28 +178,6 @@ int main(int argc, char *argv[]){
       perror("could not start thread_tracker_stats");
       exit(EXIT_FAILURE);
     }
-
-
-  // This is replaced with the TCP sessions
-  // Create a thread to receive commands from the Fringe Tracker GUI
-  // pthread_t thread_tracker_controller_receiver;
-  // if(receiver_tracker_controller.size()>0)
-  //   if(pthread_create(&thread_tracker_controller_receiver,nullptr,
-  // 		      tracker_controller_receiver,
-  // 		      nullptr)!=0){
-  //     perror("could not start thread_tracker_controller");
-  //     exit(EXIT_FAILURE);
-  //   }
-
-  // This is replaced with the TCP sessions
-  // // Create a thread to send config feedback to the Fringe Tracker GUI
-  // pthread_t thread_tracker_controller_sender;
-  // if(sender_tracker_controller.size()>0)
-  //   if(pthread_create(&thread_tracker_controller_sender,nullptr,
-  // 		      tracker_controller_sender,nullptr)!=0){
-  //     perror("could not start thread_tracker_controller_sender");
-  //     exit(EXIT_FAILURE);
-  //   }
 
   std::cout << "sender_tracker_snr=" << sender_tracker_snr << std::endl;
   amjComEndpointUDP r(receiver_phasors,"");
@@ -256,10 +221,6 @@ int main(int argc, char *argv[]){
       phasors[j].read2(packet.read(phasors[j].memsize2()));
     }
 
-    //std::cout << "phasors.size()=" << phasors.size() << std::endl;
-    
-    //T.read(packet.read(T.size()));
-    //packet >> phasors;
     if(i%100==0)
       std::cout << "nframes/100=" << i/100 << std::endl;
 
@@ -272,6 +233,7 @@ int main(int argc, char *argv[]){
       for(size_t i=0;i<phasors.size();i++)
 	delayMachines.push_back(DelayMachineDFT(phasors[i].name(),
 						nIncoherent,nSmooth));
+      version_delayMachines++;
     }
     
     // Load phasors into delay machines
@@ -280,20 +242,6 @@ int main(int argc, char *argv[]){
     for(unsigned int i=0;i<phasors.size();i++)
       delayMachines[i].load(phasors[i]);
     }
-
-    // This should be moved into TCP sessions
-    // Send SNR to SNRViewer
-    // packetSNRViewer.clear();
-    // T.now(); // Remove this line later 
-    // T.write(packetSNRViewer.write(T.size()));
-    // int nValues=delayMachines.size();
-    // float snr;
-    // memcpy(packetSNRViewer.write(sizeof(int)),&nValues,sizeof(int));
-    // for(int i=0;i<nValues;i++){
-    //   snr=delayMachines[i].snr();
-    //   memcpy(packetSNRViewer.write(sizeof(float)),&snr,sizeof(float));
-    // }
-    // ssnr.send(packetSNRViewer);
 
     if(!compare(delayMachines,stateMachines)){
       std::lock_guard<std::mutex> lock(mutex_stateMachines);
@@ -306,6 +254,7 @@ int main(int argc, char *argv[]){
       for(size_t i=0;i<delayMachines.size();i++)
 	stateMachines.push_back(FringeTrackerStateMachine(delayMachines[i].name(),
 							  state));
+      version_stateMachines++;
     }
     
     // Load delays into state machines
@@ -322,16 +271,11 @@ int main(int argc, char *argv[]){
     Delays<float> baselinemovements(stateMachines.size());
     for(unsigned int i=0;i<stateMachines.size();i++)
       baselinemovements[i]=-stateMachines[i].movement();
-    //std::cout << baselinemovements;
-    //for(unsigned int i=0;i<stateMachines.size();i++)
-    //  std::cout << stateMachines[i].stateName() << " ";
-    //std::cout << std::endl;
     baseline2delayline.loadBaselineMovements(baselinemovements);
       
     // Send baseline movements to delay line interface
     Delays<float> delaylinemovements=baseline2delayline.delaylineMovements();
 
-    //std::cout << delaylinemovements << std::endl;
     packet.clear();
     T.write(packet.write(T.size()));
     packet << delaylinemovements;
@@ -469,168 +413,15 @@ bool compare(const std::vector<DelayMachineDFT> &delayMachines,
   return true;
 }
 
-// #include <iostream>
-// bool check_dimensions(){
-//   if(phasors.size()!=delayMachines.size()){
-//     std::cout << "tracker: number of baselines mismatched: delayMachines: "
-// 	      << delayMachines.size() << ", phasors: " << phasors.size()
-// 	      << std::endl;
-//     return false;
-//   }
-  
-//   for(unsigned int i=0;i<phasors.size();i++)
-//     if(phasors[i].size()!=delayMachines[i].size()){
-//       std::cout << "tracker: number of wavelengths mismatched on baseline "
-// 		<< stateMachines[i].name() << " (" << i << "): delayMachines: "
-// 		<< delayMachines[i].size() << ", phasors: "
-// 		<< phasors[i].size() << std::endl;
-//       return false;
-//     }
-  
-//   return true;
-// }
-
-// void setup_fringe_tracker(std::vector<FringeTrackerBaselineSpec> &s){
-//   int state;
-//   if(active)
-//     state=STATE_SEARCH;
-//   else
-//     state=STATE_STOP;
-//   // Next create the new fringe tracker objects
-//   delayMachines.clear();
-//   stateMachines.clear();
-//   for(unsigned int i=0;i<s.size();i++){
-//     delayMachines.push_back(DelayMachineGD(s[i].name(),s[i].L(),s[i].nOver(),
-// 					   s[i].nIncoherent(),s[i].nSmooth()));
-//     stateMachines.push_back(FringeTrackerStateMachine(s[i].name(),state));
-//   }
-	
-//   baseline2delayline=Baseline2DelaylineLinear(s.size(),nDelaylines);
-//   flag_resizetrackerstats=true;
-// }
-
-// void* sample_pspec(void *dummy){
-//   amjComEndpointUDP s("",sender_pspec);
-//   amjPacket packet;
-//   std::vector<std::string> names;
-//   std::vector<PowerSpectrum> pspecs;
-//   for(;;){
-//     m.lock();
-//     names.clear();
-//     pspecs.clear();
-//     for(unsigned int i=0;i<delayMachines.size();i++){
-//       names.push_back(delayMachines[i].name());
-//       pspecs.push_back(delayMachines[i].p());
-//     }
-//     m.unlock();
-//     packet.clear();
-//     packet << names;
-//     packet << pspecs;
-//     s.send(packet);
-//     usleep(1000*sender_pspec_interval);
-//   }
-// }
 
 // This should remain, to sample tracker stats, but it should not send anything
- void *sample_tracker_stats(void *dummy){
-   for(;;){
+void *sample_tracker_stats(void *dummy){
+  for(;;){
     
-     sleep(1);
-   }
-
-//   amjComEndpointUDP s("",sender_tracker_stats);
-//   amjPacket packet;
-//   unsigned int sender_tracker_time_since_report=0;
-//   m.lock();
-//   if(flag_resizetrackerstats)
-//     resizetrackerstats();
-//   flag_resizetrackerstats=false;
-//   m.unlock();
-//   for(;;){
-//     m.lock();
-//     for(unsigned int i=0;i<stats.size();i++)
-//       stats[i].update(stateMachines[i].state());
-//     m.unlock();
-//     if(sender_tracker_time_since_report>=sender_tracker_stats_report_interval){
-//       packet.clear();
-//       packet << baselinenames;
-//       packet << statenames;
-//       for(unsigned int i=0;i<stats.size();i++){
-// 	packet << stats[i].stats();
-// 	stats[i].clear();
-//       }
-//       s.send(packet);
-//       sender_tracker_time_since_report=0;
-//     }
-//     else
-//       sender_tracker_time_since_report+=sender_tracker_stats_sample_interval;
-//     usleep(1000*sender_tracker_stats_sample_interval);
-//   }
- }
-
-// void resizetrackerstats(){
-//   unsigned int nbaselines=stateMachines.size();
-//   unsigned int nstates=stateMachines[0].nstates();
-//   baselinenames.resize(nbaselines);
-//   statenames.resize(nstates);
-//   stats.resize(nbaselines);
-//   for(unsigned int i=0;i<nbaselines;i++){
-//     baselinenames[i]=stateMachines[i].name();
-//     stats[i].resize(nstates);
-//   }
-//   for(unsigned int i=0;i<nstates;i++)
-//     statenames[i]=stateMachines[0].stateName(i);
-// }
-
-// this should be replaced with similar code in TCP sessions
-// void *tracker_controller_receiver(void *dummy){
-//   amjComEndpointUDP r(receiver_tracker_controller,"");
-//   amjPacket packet;
-//   int n;
-//   FringeTrackerStateMachineConfig c;
-//   for(;;){
-//     std::cout << "tracker_controller_receiver" << std::endl;
-//     r.receive(packet);
-//     packet >> n;
-//     m.lock();
-//     if((unsigned int)n!=stateMachines.size()){
-//       m.unlock();
-//       std::cout << "tracker: tracker controller cmd mismatch: n=" << n
-// 		<< ", stateMachines.size()=" << stateMachines.size()
-// 		<< std::endl;
-//       continue;
-//     }
-//     for(unsigned int i=0;i<stateMachines.size();i++){
-//       c.read(packet.read(c.size()));
-//       stateMachines[i].setConfig(c);
-//     }    
-//     m.unlock();
-//   }
-// }
-
-// This should be replaced with similar code in TCP sessions
-// void *tracker_controller_sender(void *dummy){
-//   amjComEndpointUDP s("",sender_tracker_controller);
-//   amjPacket packet;
-//   std::vector<std::string> names;
-//   FringeTrackerStateMachineConfig c;
-//   for(;;){
-//     std::cout << "tracker_controller_sender" << std::endl;
-//     packet.clear();
-//     m.lock();
-//     names.resize(stateMachines.size());
-//     for(unsigned int i=0;i<stateMachines.size();i++)
-//       names[i]=stateMachines[i].name();
-//     packet << names;
-//     for(unsigned int i=0;i<stateMachines.size();i++){
-//       c=stateMachines[i].getConfig();
-//       c.write(packet.write(c.size()));
-//     }
-//     m.unlock();
-//     s.send(packet);
-//     usleep(1000000);
-//   }
-// }
+    sleep(1);
+  }
+  
+}
 
 void server_session(amjCom::Server,amjCom::Session S){
   std::cout << "server_session: new session" << std::endl;
@@ -655,25 +446,58 @@ void server_status(amjCom::Server,amjCom::Status s){
 
 void server_session_receive(amjCom::Session s, amjCom::Packet &p){
   char c=p.read(1)[0];
+  amjCom::Packet q;
 
   std::cout << "server_session_receive: received: " << c << std::endl;
   
   if(c=='P'){ // Send a set of power spectra
-    amjCom::Packet p;
-    {
-      std::lock_guard<std::mutex> lock(mutex_delayMachines);
-      uint32_t n=delayMachines.size();
-      //std::cout << "delayMachines.size()=" << delayMachines.size() << std::endl;
-      memcpy(p.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
-      for(unsigned int i=0;i<delayMachines.size();i++)
-	delayMachines[i].p().write(p.write(delayMachines[i].p().memsize()));
+    std::lock_guard<std::mutex> lock(mutex_delayMachines);
+    uint32_t n=delayMachines.size();
+    memcpy(q.write(sizeof(uint32_t)),&n,sizeof(uint32_t));
+    for(unsigned int i=0;i<delayMachines.size();i++)
+      delayMachines[i].p().write(q.write(delayMachines[i].p().memsize()));
+  }
+  else if(c=='S'){ // Send SNR values
+    uint32_t version;
+    memcpy(&version,p.read(sizeof(uint32_t)),sizeof(uint32_t)); 
+    std::lock_guard<std::mutex> lock(mutex_delayMachines);
+    uint32_t n=delayMachines.size();
+    if(version!=version_delayMachines){
+      c='U';
+      write(q,c);
+      write(q,version_delayMachines);
+      std::vector<std::string> names;
+      names.reserve(n);
+      for(const auto &dm: delayMachines)
+	names.push_back(dm.name());
+      write(q,names);
     }
-    s->send(p);
+    c='D';
+    write(q,c);
+    amjTime time;
+    if(n>0){
+      time=delayMachines[0].time();
+    }
+    else
+      time.now();
+    time.write(q.write(time.size()));
+    std::vector<float> snrs;
+    snrs.reserve(n);
+    for(auto &dm:delayMachines)
+      snrs.push_back(dm.snr());
+    write(q,snrs);
+  }
+  else if(c=='C'){ // Configuration information
+    // If next character is 'S' then sender is setting configuration
+
+    // If next characters is 'R' then sender is requesting configuration
+    
   }
   else{
     std::cout << "server_session_receiver: unrecognized command: "
 	      << c << ". ignoring" << std::endl;
   }  
+  s->send(q);
 }
 
 void server_session_status(amjCom::Session,amjCom::Status s){
