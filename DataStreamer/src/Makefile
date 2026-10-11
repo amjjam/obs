@@ -2,16 +2,16 @@ ifndef prefix
 	prefix=/opt/obs
 endif
 ifndef INC
-	INC=-I/opt/amj/include
+	INC=-I/opt/amj/include -I/opt/amj/include/amjCom
 endif
 ifndef LIB
 	LIB=-L/opt/amj/lib
 endif
 
-LIBS=-lamjCom -lamjFourierFITS -lamjTime -lamjArg
+LIBS=-lamjLogCom -lamjLog -lamjCom -lamjFourierFITS -lamjTime -lamjArg
 LDFLAGS=$(LIB)
 
-FLAGS=-Wall -g $(INC)
+FLAGS=-std=c++17 -Wall -g -pthread $(INC)
 CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
