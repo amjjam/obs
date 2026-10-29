@@ -24,20 +24,6 @@ help({
     "  lines which correspond to endpoints can be out of order. This is the",
     "  index to the delay line and should be one more than the number of",
     "  baselines. Default is 0, 1, 2, ....",
-    // "--sender-tracker-stats <string> <int> <int>",
-    // "  Specifies a communicator for sending fringe tracker statistics (first),",
-    // "  and a sampling interval in ms (second), and a reporting interval in ms",
-    // "  (third). Defaults for intervals are 5 ms and 1000 ms",
-    // "--sender-pspec <string> <int>",
-    // "  Specifies a communicator and a time interval in ms. Sends the delay",
-    // "  machine average power spectrum via the communicator at the ms interval.",
-    // "--receiver-tracker-controller <string>",
-    // "  Specifies a communicator for receiving commands",
-    // "--sender-tracker-controller <string> <int>",
-    // "  Specifies a communicator for sending tracker status (first), and an",
-    // "  interval in ms (second)",
-    // "--sender-tracker-snr <string>",
-    // "  Specifies a communicator for sending SNR",
     "--active <int>",
     "  <int> the state machines should begin in the active (1) or inactive (0)",
     "  state. Default is inactive (0).",
@@ -73,12 +59,11 @@ help({
   });
 
 #include "../include/FringeTrackerStateMachine.H"
-#include "../include/DelayMachineDFT.H"
 #include "../include/Baseline2DelaylineLinear.H"
-#include "../include/FringeTrackerBaselineSpec.H"
 
 #include "../../shared/include/Timing.H"
 
+#include <numeric>
 #include <mutex>
 #include <semaphore.h>
 #include <string>
@@ -99,15 +84,15 @@ help({
 
 void parse_args(int,char *[]);
 bool compare(const std::vector<amjInterferometry::Phasors<float> > &,
-	     const std::vector<DelayMachineDFT> &);
-bool compare(const std::vector<DelayMachineDFT> &,
+	     const std::vector<amjInterferometry::DelayMachine> &);
+bool compare(const std::vector<amjInterferometry::DelayMachine> &,
 	     const std::vector<FringeTrackerStateMachine> &);
 void* sample_pspec(void *);
 void* sample_tracker_stats(void *);
 void resizetrackerstats();
 void *tracker_controller_receiver(void *);
 void *tracker_controller_sender(void *);
-void send2SNRViewer(std::vector<DelayMachineDFT> &);
+void send2SNRViewer(std::vector<amjInterferometry::DelayMachine> &);
 
 std::string receiver_phasors="127.0.0.1:27001";
 std::string sender_movements;
@@ -119,7 +104,6 @@ unsigned int sender_tracker_stats_report_interval;
 std::string receiver_tracker_controller;
 std::string sender_tracker_controller;
 unsigned int sender_tracker_controller_interval;
-//std::string sender_tracker_snr="127.0.0.1:27011";
 
 int nDelaylines=6;
 int stateMachineTSample=10;
@@ -129,7 +113,7 @@ bool active=false;
 int nIncoherent=5;
 int nSmooth=1;
 
-std::vector<DelayMachineDFT> delayMachines;
+std::vector<amjInterferometry::DelayMachine> delayMachines;
 int32_t version_delayMachines=0;
 std::mutex mutex_delayMachines;
 
@@ -137,7 +121,6 @@ std::vector<FringeTrackerStateMachine> stateMachines;
 int32_t version_stateMachines=0;
 std::mutex mutex_stateMachines;
 
-//PhasorSets phasors;
 std::vector<amjInterferometry::Phasors<float> > phasors;
 std::vector<std::pair<float,float> > baselinemovements;
 
@@ -234,9 +217,16 @@ int main(int argc, char *argv[]){
     if(!compare(phasors,delayMachines)){
       std::lock_guard<std::mutex> lock(mutex_delayMachines);
       delayMachines.clear();
-      for(size_t i=0;i<phasors.size();i++)
-	delayMachines.push_back(DelayMachineDFT(phasors[i].name(),
-						nIncoherent,nSmooth));
+      // Preserve the old DFT search grid; configure only when rebuilding.
+      std::vector<float> delays(201);
+      std::iota(delays.begin(),delays.end(),-100.0f);
+      delayMachines.reserve(phasors.size());
+      for(size_t i=0;i<phasors.size();i++){
+        amjInterferometry::CalcPowerSpectrumDFT<float> calculator;
+        calculator.set_delay(delays);
+        delayMachines.emplace_back(phasors[i].name(),std::move(calculator),
+                                   nIncoherent,nSmooth);
+      }
       version_delayMachines++;
     }
     
@@ -314,14 +304,7 @@ int main(int argc, char *argv[]){
 void parse_args(int argc, char *argv[]){
   help.help(argc,argv);
   
-  //std::vector<FringeTrackerBaselineSpec> baselinespecs;
-  
   for(int i=1;i<argc;i++){
-    /*if(strcmp(argv[i],"--baseline")==0){
-      baselinespecs.push_back(FringeTrackerBaselineSpec(argv[i+1],atoi(argv[i+2]),atof(argv[i+3]),atof(argv[i+4]),atoi(argv[i+5]),atoi(argv[i+6]),atoi(argv[i+7])));
-      i+=7;
-    }
-    else*/
     if(strcmp(argv[i],"--receiver-phasors")==0){
       i++;
       receiver_phasors=argv[i];
@@ -363,10 +346,6 @@ void parse_args(int argc, char *argv[]){
       i++;
       sender_tracker_controller_interval=atoi(argv[i]);
     }
-    // else if(strcmp(argv[i],"--sender-tracker-snr")==0){
-    //   i++;
-    //   sender_tracker_snr=argv[i];
-    // }
     else if(strcmp(argv[i],"--active")==0){
       i++;
       if(atoi(argv[i])==0)
@@ -388,14 +367,10 @@ void parse_args(int argc, char *argv[]){
       exit(EXIT_FAILURE);
     }
   }
-
-  // if(baselinespecs.size()>0)
-  //   setup_fringe_tracker(baselinespecs);
-
 }
 
 bool compare(const std::vector<amjInterferometry::Phasors<float> > &phasors,
-	     const std::vector<DelayMachineDFT> &delayMachines){
+	     const std::vector<amjInterferometry::DelayMachine> &delayMachines){
   if(phasors.size()!=delayMachines.size())
     return false;
   
@@ -406,7 +381,7 @@ bool compare(const std::vector<amjInterferometry::Phasors<float> > &phasors,
   return true;
 }
 
-bool compare(const std::vector<DelayMachineDFT> &delayMachines,
+bool compare(const std::vector<amjInterferometry::DelayMachine> &delayMachines,
 	     const std::vector<FringeTrackerStateMachine> &stateMachines){
   if(stateMachines.size()!=delayMachines.size())
     return false;
