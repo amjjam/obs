@@ -3,17 +3,12 @@
 
 #include <vector>
 
-#include "../../shared/include/Delays.H"
-
+template<typename T=float>
 class Baseline2Delayline{
 public:
-  Baseline2Delayline(int nB, int nD);
+  Baseline2Delayline(){};
   virtual ~Baseline2Delayline()=0;
-  void loadBaselineMovements(Delays<float> &b);
-  virtual Delays<float> delaylineMovements()=0;
-protected:
-  Delays<float> B;
-  Delays<float> D;
+  virtual void operator()(const std::vector<T> &, std::vector<T> &)=0;
 };
 
 #endif /* _BASELINE2DELAYLINE_H_ */

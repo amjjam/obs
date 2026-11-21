@@ -74,7 +74,7 @@ public:
   // State functions
   int nstates() const {return _stateNames.size();};
   int state() const {return _state;}; // current state
-  void loadDelay(float d, float s){delay=d;_snr=s;};// Load the next delay
+  void operator()(float d, float s){delay=d;_snr=s;};// Load the next delay
   float snr(){return _snr;};
   int advance(); // Advance the state machine
   float movement() const {return _move;}; // Get the movement

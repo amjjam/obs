@@ -11,13 +11,14 @@ endif
 LIBS=-lamjCom -lamjTime -lamjArg -lamjInterferometry
 LDFLAGS= $(LIB)
 
-FLAGS=-Wall -g $(INC)
+FLAGS=-Wall -g $(INC) -std=c++20
 CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
 
 TRACKER_SRC=tracker.C 	FringeTrackerStateMachine.C \
-	Baseline2Delayline.C Baseline2DelaylineLinear.C
+	../../protocol/src/FringeTrackerProtocol.C
+
 TRACKER_OBJ=$(TRACKER_SRC:.C=.o)
 
 all: FringeTracker
