@@ -6,8 +6,8 @@
 template<typename T=float>
 class Baseline2Delayline{
 public:
-  Baseline2Delayline(){};
-  virtual ~Baseline2Delayline()=0;
+  Baseline2Delayline()=default;
+  virtual ~Baseline2Delayline()=default;
   virtual void operator()(const std::vector<T> &, std::vector<T> &)=0;
 };
 

@@ -111,10 +111,13 @@ std::vector<ai::Phasors<float> > ph;
 static PhasorsAverage pha;
 static CalcPowerSpectrum cps;
 static std::vector<ai::PowerSpectrum<>> ps;
+static PowerSpectrumAverage psa;
+
+static Baseline2DelaylineLinear baseline2delayline({0,1});
 
 //std::vector<std::unique_ptr<ai::PhasorsAverage<>>> pha;
 //std::vector<std::unique_ptr<ai::CalcPowerSpectrum<>>> cps;
-std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> psa;
+//std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> psa;
 std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> pss;
 std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> aps;
 std::vector<std::unique_ptr<DelayFilter<>>> df;
@@ -168,7 +171,7 @@ void sigterm_callback(int s){
 
 
 
-Baseline2DelaylineLinear baseline2delayline(3,nDelaylines);
+//Baseline2DelaylineLinear baseline2delayline(3,nDelaylines);
 
 // TCP server
 std::string server_address=":27014";
@@ -261,7 +264,12 @@ int main(int argc, char *argv[]){
       if(new_pversion!=pversion){
 	pha.config(ph);
 	cps.config(ph);
-	ps.resize(ph.size());
+	{
+	  std::lock_guard<std::mutex> lock=cps.lock();
+	  ps.resize(ph.size()); // cps lock when writing to ps
+	}
+	psa.config(ph.size());
+	
 	// and all the others
 	pversion=new_pversion;
       }
@@ -283,21 +291,22 @@ int main(int argc, char *argv[]){
     
     // Calculate power spectra
     {
-      std::lock_guard<std::mutex> lock=cps.lock();
+      std::lock_guard<std::mutex> phalock=pha.lock();
+      std::lock_guard<std::mutex> cpslock=cps.lock();
       for(size_t j=0;j<cps.size();j++)
 	cps[j](pha[j],ps[j]);
     }
     
-    //for(size_t j=0;j<cps.size();j++)
-    //  (*cps[j])((pha[j]),ps[j]);
-    
     // Average power spectrum (over time dimension)
-    for(size_t j=0;j<psa.size();j++)
-      (*psa[j])(ps[j]);
+    {
+      std::lock_guard<std::mutex> lock=psa.lock();
+      for(size_t j=0;j<psa.size();j++)
+	psa[j](ps[j]);
+    }
     
     // Smooth power spectrum (over delay dimension)
     for(size_t j=0;j<pss.size();j++)
-      (*pss[j])(*psa[j]);
+      (*pss[j])(psa[j]);
     
     // Analyze power spectra (find peak delay and SNR)
     for(size_t j=0;j<aps.size();j++)
@@ -636,21 +645,28 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
 				   +std::to_string(static_cast<uint8_t>(command)));
 	}
 	break;
-      case '2':
-	PhasorsAverageConfig config;
-	config.read(q.read(config.size()));
-	//pha.config(config);
+      case '2':{
+	PhasorsAverageConfig c;
+	c.read(q.read(c.size()));
+	pha.config(c);
 	break;
-      case '3':
-	new_cps_c.read(q.read(new_cps_c.size()));
-	// call update in mutex lock
+      }
+      case '3':{
+	CalcPowerSpectrumConfig c;
+	c.read(q.read(c.size()));
+	cps.config(c);
 	break;
-      case '4':
-	new_psa_c.read(q.read(new_psa_c.size()));
-	// call update in mutex lock
-      case '5':
-	new_pss_c.read(q.read(new_pss_c.size()));
-	// call update in mutex lock
+      }
+      case '4':{
+	PowerSpectrumAverageConfig c;
+	c.read(q.read(c.size()));
+	psa.config(c);
+      }
+      case '5':{
+	PowerSpectrumSmoothConfig c;
+	c.read(q.read(c.size()));
+	// pss.config(c)
+      }
       case '6':
 	new_aps_c.read(q.read(new_aps_c.size()));
 	// call update in mutex lock
