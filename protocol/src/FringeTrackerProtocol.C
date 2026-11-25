@@ -139,7 +139,8 @@ size_t AnalyzePowerSpectrumConfig::read(uint8_t *pp){
 }
 
 size_t DelayFilterConfig::size(){
-  return sizeof(uint8_t)+sizeof(int32_t)+sizeof(int16_t)+sizeof(double);
+  return sizeof(uint8_t)+sizeof(int32_t)+sizeof(int16_t)+sizeof(double)
+    +sizeof(int32_t);
 }
 
 size_t DelayFilterConfig::write(uint8_t *pp){
@@ -148,7 +149,8 @@ size_t DelayFilterConfig::write(uint8_t *pp){
   std::memcpy(p,&t,sizeof(uint8_t)); p+=sizeof(uint8_t);
   std::memcpy(p,&version,sizeof(int32_t)); p+=sizeof(int32_t);
   std::memcpy(p,&filteringType,sizeof(int16_t)); p+=sizeof(int16_t);
-  std::memcpy(p,&tfilter,sizeof(double)); p+=sizeof(double);
+  std::memcpy(p,&tfilter,sizeof(double)); p+=sizeof(double); 
+  std::memcpy(p,&stride,sizeof(int32_t)); p+=sizeof(int32_t);
   return p-pp;
 }
 
@@ -160,6 +162,7 @@ size_t DelayFilterConfig::read(uint8_t *pp){
   std::memcpy(&version,p,sizeof(int32_t)); p+=sizeof(int32_t);
   std::memcpy(&filteringType,p,sizeof(int16_t)); p+=sizeof(int16_t);
   std::memcpy(&tfilter,p,sizeof(double)); p+=sizeof(double);
+  std::memcpy(&stride,p,sizeof(int32_t)); p+=sizeof(int32_t);
   return p-pp;
 }
 
@@ -261,13 +264,13 @@ size_t BaselineNameConfig::read2(uint8_t *pp){
   return p-pp;
 }
 
-size_t StateMachineConfig::size(){
+size_t StateMachinesConfig::size(){
   return size1()+size2();
 }
 
-size_t StateMachineConfig::write(uint8_t *pp){
+size_t StateMachinesConfig::write(uint8_t *pp){
   uint8_t *p=pp;
-  uint8_t t=STATEMACHINECONFIG;
+  uint8_t t=STATEMACHINESCONFIG;
   std::memcpy(p,&t,sizeof(uint8_t)); p+=sizeof(uint8_t);
   std::memcpy(p,&version,sizeof(int32_t)); p+=sizeof(int32_t);
   uint32_t s=size2();
@@ -289,25 +292,25 @@ size_t StateMachineConfig::write(uint8_t *pp){
   return p-pp;
 }
 
-size_t StateMachineConfig::size1(){
+size_t StateMachinesConfig::size1(){
   return sizeof(uint8_t)+sizeof(int32_t)+sizeof(uint32_t);
 }
 
-size_t StateMachineConfig::read1(uint8_t *pp){
+size_t StateMachinesConfig::read1(uint8_t *pp){
   uint8_t *p=pp,t;
   std::memcpy(&t,p,sizeof(uint8_t)); p+=sizeof(uint8_t);
-  if(t!=STATEMACHINECONFIG)
-    throw std::runtime_error(std::format("Invalid sync byte for struct StateMachineConfig. Expected 0x{:02X}, got 0x{:02X}",STATEMACHINECONFIG,t));
+  if(t!=STATEMACHINESCONFIG)
+    throw std::runtime_error(std::format("Invalid sync byte for struct StateMachineConfig. Expected 0x{:02X}, got 0x{:02X}",STATEMACHINESCONFIG,t));
   std::memcpy(&version,p,sizeof(int32_t)); p+=sizeof(int32_t);
   std::memcpy(&_size2,p,sizeof(uint32_t)); p+=sizeof(uint32_t);
   return p-pp;
 }
 
-size_t StateMachineConfig::size2(){
+size_t StateMachinesConfig::size2(){
   return sizeof(uint32_t)+bc.size()*(2*sizeof(float)+2*sizeof(int32_t))+sizeof(int32_t)+4*sizeof(double)+sizeof(int32_t);
 }
 
-size_t StateMachineConfig::read2(uint8_t *pp){
+size_t StateMachinesConfig::read2(uint8_t *pp){
   uint8_t *p=pp;
   uint32_t n;
   std::memcpy(&n,p,sizeof(uint32_t)); p+=sizeof(uint32_t);
