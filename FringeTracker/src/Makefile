@@ -16,7 +16,7 @@ CPPFLAGS=$(FLAGS)
 
 CPP=g++ $(CPPFLAGS)
 
-TRACKER_SRC=tracker.C 	FringeTrackerStateMachine.C \
+TRACKER_SRC=tracker.C 	StateMachine.C \
 	../../protocol/src/FringeTrackerProtocol.C
 
 TRACKER_OBJ=$(TRACKER_SRC:.C=.o)

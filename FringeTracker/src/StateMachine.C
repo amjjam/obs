@@ -1,26 +1,26 @@
-#include "../include/FringeTrackerStateMachine.H"
+#include "../include/StateMachine.H"
 
 
 #include <iostream>
 
 #include <amjCom/amjPacket.H>
 
-FringeTrackerStateMachineConfig::
-FringeTrackerStateMachineConfig(int onoff,float snrFound,float snrLost,
-				int holdSearch,int holdFound,int holdLost,
-				float searchAMin,float searchAMax,
-				float step,float factor,float maxGD,
-				float gain):
+StateMachineConfig::
+StateMachineConfig(int onoff,float snrFound,float snrLost,
+		   int holdSearch,int holdFound,int holdLost,
+		   float searchAMin,float searchAMax,
+		   float step,float factor,float maxGD,
+		   float gain):
   onoff(onoff),snrFound(snrFound),snrLost(snrLost),holdSearch(holdSearch),
   holdFound(holdFound),holdLost(holdLost),searchAMin(searchAMin),
   searchAMax(searchAMax),searchStepSize(step),searchFactor(factor),
   maxGD(maxGD),gain(gain){}
 
-int FringeTrackerStateMachineConfig::size(){
+int StateMachineConfig::size(){
   return sizeof(int)+2*sizeof(float)+3*sizeof(int)+6*sizeof(float);
 }
 
-int FringeTrackerStateMachineConfig::write(uint8_t *d){
+int StateMachineConfig::write(uint8_t *d){
   uint8_t *dd=(uint8_t *)memcpy(d,&onoff,sizeof(int))+sizeof(int);
   dd=(uint8_t *)memcpy(dd,&snrFound,sizeof(float))+sizeof(float);
   dd=(uint8_t *)memcpy(dd,&snrLost,sizeof(float))+sizeof(float);
@@ -37,7 +37,7 @@ int FringeTrackerStateMachineConfig::write(uint8_t *d){
   return size();
 }
 
-int FringeTrackerStateMachineConfig::read(uint8_t *d){
+int StateMachineConfig::read(uint8_t *d){
   uint8_t *dd=d;
   memcpy(&onoff,dd,sizeof(int)); dd+=sizeof(int);
   memcpy(&snrFound,dd,sizeof(float)); dd+=sizeof(float);
@@ -56,7 +56,7 @@ int FringeTrackerStateMachineConfig::read(uint8_t *d){
   return size();
 }
 
-bool FringeTrackerStateMachineConfig::operator==(const FringeTrackerStateMachineConfig &c) const{
+bool StateMachineConfig::operator==(const StateMachineConfig &c) const{
   if(onoff!=c.onoff) return false;
   if(rdiff(snrFound,c.snrFound)>0.01) return false;
   if(rdiff(snrLost,c.snrLost)>0.01) return false;
@@ -72,7 +72,7 @@ bool FringeTrackerStateMachineConfig::operator==(const FringeTrackerStateMachine
   return true;
 }
    
-void FringeTrackerStateMachineConfig::print(){
+void StateMachineConfig::print(){
   std::cout << "onoff=" << onoff << std::endl;
   std::cout << "snrFound=" << snrFound << std::endl;
   std::cout << "snrLost=" << snrLost << std::endl;
@@ -115,17 +115,17 @@ void FringeTrackerStateMachineStatistics::update(int i){
 //   p >> counts;
 // }
 
-std::string FringeTrackerStateMachine::stateName() const{
+std::string StateMachine::stateName() const{
   return stateName(_state);
 }
 
-std::string FringeTrackerStateMachine::stateName(int state) const{
+std::string StateMachine::stateName(int state) const{
   if(state>STATE_LOST||state<STATE_STOP)
     return "Unknown/Invalid";
   return _stateNames[state];  
 }
 
-int FringeTrackerStateMachine::advance(){
+int StateMachine::advance(){
   //std::cout << delay << " " << _snr << std::endl;
   if(c.onoff==OFF)
     _state=STATE_STOP;

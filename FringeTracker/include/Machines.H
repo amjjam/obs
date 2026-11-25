@@ -377,11 +377,12 @@ std::unique_ptr<DelayFilter<T>> DelayFilters<T>::make(const DelayFilterConfig& c
 //
 
 #include "StateMachine.H"
+namespace ai=amjInterferometry;
 
 class StateMachines{
 public:
   StateMachines(){c.stride=1;}
-  void config(const std::vector<std::string>& names,int state=STATE_STOP);
+  void config(const std::vector<ai::Phasors<>>& ph,int state=STATE_STOP);
   bool config(const StateMachinesConfig& next);
   const StateMachinesConfig& config() const {return c;}
   std::size_t size() const {return a.size();}
@@ -397,15 +398,15 @@ private:
   mutable std::mutex m;
 };
 
-inline void StateMachines::config(const std::vector<std::string>& names,int state){
+inline void StateMachines::config(const std::vector<ai::Phasors<>>& ph,int state){
   auto guard=lock();
   StateMachineConfig defaults;
   a.clear();
-  a.reserve(names.size());
-  for(const auto& name:names)
-    a.emplace_back(name,state);
-  c.bc.assign(names.size(),{defaults.snrFound,defaults.snrLost,
-                            defaults.holdFound,defaults.holdLost});
+  a.reserve(ph.size());
+  for(const auto& iph:ph)
+    a.emplace_back(iph.name(),state);
+  c.bc.assign(ph.size(),{defaults.snrFound,defaults.snrLost,
+			 defaults.holdFound,defaults.holdLost});
   c.sc={defaults.holdSearch,defaults.searchAMin,defaults.searchAMax,
         defaults.searchStepSize,defaults.searchFactor};
   c.version=0;
