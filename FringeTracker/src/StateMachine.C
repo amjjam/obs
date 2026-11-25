@@ -107,13 +107,13 @@ void FringeTrackerStateMachineStatistics::update(int i){
   counts[i]++;
 }
 
-void FringeTrackerStateMachineStatistics::write(amjPacket &p) const{
-  p << counts;
-}
+// void FringeTrackerStateMachineStatistics::write(amjPacket &p) const{
+//   p << counts;
+// }
 
-void FringeTrackerStateMachineStatistics::read(amjPacket &p){
-  p >> counts;
-}
+// void FringeTrackerStateMachineStatistics::read(amjPacket &p){
+//   p >> counts;
+// }
 
 std::string FringeTrackerStateMachine::stateName() const{
   return stateName(_state);

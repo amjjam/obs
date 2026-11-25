@@ -6,7 +6,7 @@
 #include <complex>
 #include <stdint.h>
 
-#include <amjCom/amjPacketRW.H>
+//#include <amjCom/amjPacketRW.H>
 
 #define OFF 0
 #define ON 1
@@ -17,16 +17,16 @@
 #define STATE_LOCK 3
 #define STATE_LOST 4
 
-class FringeTrackerStateMachineConfig{
+class StateMachineConfig{
 public:
-  FringeTrackerStateMachineConfig(int onoff=OFF, float foundSNR=6,
-				  float lostSNR=3, int holdSearch=10,
-				  int holdFound=3, int holdLost=10,
-				  float searchAMin=3,
-				  float searchAMax=5000,
-				  float step=3, float factor=1.5,
-				  float maxGD=10, float gain=0.1);
-  ~FringeTrackerStateMachineConfig(){};
+  StateMachineConfig(int onoff=OFF, float foundSNR=6,
+		     float lostSNR=3, int holdSearch=10,
+		     int holdFound=3, int holdLost=10,
+		     float searchAMin=3,
+		     float searchAMax=5000,
+		     float step=3, float factor=1.5,
+		     float maxGD=10, float gain=0.1);
+  ~StateMachineConfig(){};
   int onoff;
   float snrFound;
   float snrLost;
@@ -42,7 +42,7 @@ public:
   int size();
   int write(uint8_t *);
   int read(uint8_t *);
-  bool operator==(const FringeTrackerStateMachineConfig &) const;
+  bool operator==(const StateMachineConfig &) const;
   float rdiff(float a, float b) const {return fabs(a-b)/(a+b);};
   void print();
 };
@@ -56,18 +56,18 @@ public:
   void update(int);
   std::vector<float> stats();
   virtual int memsize() const {return sizeof(int)+counts.size()*sizeof(int);};
-  virtual void write(amjPacket &p) const;
-  virtual void read(amjPacket &p);
+  //virtual void write(amjPacket &p) const;
+  //virtual void read(amjPacket &p);
 private:
   std::vector<int> counts;
 };
 
-class FringeTrackerStateMachine{
+class StateMachine{
 public:
-  FringeTrackerStateMachine(std::string name="none", int state=STATE_STOP):
+  StateMachine(std::string name="none", int state=STATE_STOP):
     _name(name),_state(state),
     _stateNames({"Stopped","Searching","Found","Locked","Lost"}){};
-  ~FringeTrackerStateMachine(){};
+  ~StateMachine(){};
   const std::string &name() const {return _name;};
   std::string stateName() const;
   std::string stateName(int state) const;
@@ -80,11 +80,11 @@ public:
   float movement() const {return _move;}; // Get the movement
 
   // Configuration functions
-  void setConfig(const FringeTrackerStateMachineConfig &c_){c=c_;};
-  const FringeTrackerStateMachineConfig &getConfig() {return c;};
+  void setConfig(const StateMachineConfig &c_){c=c_;};
+  const StateMachineConfig &getConfig() {return c;};
   void reset();
 private:
-  FringeTrackerStateMachineConfig c; // state machine configuration
+  StateMachineConfig c; // state machine configuration
   float delay;
   float _snr;
   std::string _name; 

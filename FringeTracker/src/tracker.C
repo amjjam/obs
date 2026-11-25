@@ -59,13 +59,14 @@ help({
   });
 
 //#include "../include/DelayMachine.H"
-#include "../include/FringeTrackerStateMachine.H"
+#include "../include/StateMachine.H"
 #include "../include/Baseline2DelaylineLinear.H"
 #include "../include/DelayFilter.H"
 
 #include "../../shared/include/Timing.H"
 
 #include "../include/Machines.H"
+#include "../include/DelayFilter.H"
 
 #include <numeric>
 #include <stdexcept>
@@ -112,28 +113,32 @@ static PhasorsAverage pha;
 static CalcPowerSpectrum cps;
 static std::vector<ai::PowerSpectrum<>> ps;
 static PowerSpectrumAverage psa;
+static PowerSpectrumSmooth pss;
+static AnalyzePowerSpectrum aps;
+static DelayFilters df;
+static StateMachines sm;
 
 static Baseline2DelaylineLinear baseline2delayline({0,1});
 
 //std::vector<std::unique_ptr<ai::PhasorsAverage<>>> pha;
 //std::vector<std::unique_ptr<ai::CalcPowerSpectrum<>>> cps;
 //std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> psa;
-std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> pss;
-std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> aps;
-std::vector<std::unique_ptr<DelayFilter<>>> df;
-std::vector<FringeTrackerStateMachine> sm;
+//std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> pss;
+//std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> aps;
+//std::vector<std::unique_ptr<DelayFilter<>>> df;
+//std::vector<FringeTrackerStateMachine> sm;
 std::vector<float> bm; // baseline movement
 std::vector<float> dm; // delayline movement
 
 // Configuration objects
-PhasorsAverageConfig pha_c,new_pha_c;
-CalcPowerSpectrumConfig cps_c,new_cps_c;
-PowerSpectrumAverageConfig psa_c,new_psa_c;
-PowerSpectrumSmoothingConfig pss_c,new_pss_c;
-AnalyzePowerSpectrumConfig aps_c,new_aps_c;
-DelayFilterConfig df_c,new_df_c;
-StateMachineConfig sm_c,new_sm_c;
-OutputConfig o_c,new_o_c;
+// PhasorsAverageConfig pha_c,new_pha_c;
+// CalcPowerSpectrumConfig cps_c,new_cps_c;
+// PowerSpectrumAverageConfig psa_c,new_psa_c;
+// PowerSpectrumSmoothingConfig pss_c,new_pss_c;
+// AnalyzePowerSpectrumConfig aps_c,new_aps_c;
+// DelayFilterConfig df_c,new_df_c;
+// StateMachineConfig sm_c,new_sm_c;
+// OutputConfig o_c,new_o_c;
 
 std::mutex m_conf; // lock for reconfiguration. Other thread cannot
 		   // reconfigure while main is running, main cannot
@@ -235,7 +240,6 @@ int main(int argc, char *argv[]){
   // For cleanly closing the log file on SIGTERM
   signal(SIGTERM,&sigterm_callback);
   
-  int32_t idstride=0,dstride=1;
   int32_t isstride=0,sstride=1;
   int32_t iostride=0,ostride=1;
   while(true){
@@ -269,6 +273,12 @@ int main(int argc, char *argv[]){
 	  ps.resize(ph.size()); // cps lock when writing to ps
 	}
 	psa.config(ph.size());
+	pss.config(ph.size());
+	aps.config(ph.size());
+	df.config(ph.size());
+	sm.config(ph.size());
+	bm.resize(ph.size());
+	dm.resize(ph.size()+1); // We need a configuration # delaylines
 	
 	// and all the others
 	pversion=new_pversion;
@@ -305,31 +315,43 @@ int main(int argc, char *argv[]){
     }
     
     // Smooth power spectrum (over delay dimension)
-    for(size_t j=0;j<pss.size();j++)
-      (*pss[j])(psa[j]);
+    {
+      std::lock_guard<std::mutex> psalock=psa.lock();
+      std::lock_guard<std::mutex> psslock=pss.lock();
+      for(size_t j=0;j<pss.size();j++)
+	pss[j](psa[j]);
+    }
     
     // Analyze power spectra (find peak delay and SNR)
-    for(size_t j=0;j<aps.size();j++)
-      (*aps[j])(*pss[j]);
+    {
+      std::lock_guard<std::mutex> psslock=pss.lock();
+      std::lock_guard<std::mutex> apslock=aps.lock();
+      for(size_t j=0;j<aps.size();j++)
+	aps[j](pss[j]);
+    }
     
     // Filter delay and SNR
-    for(size_t j=0;j<df.size();j++)
-      (*df[j])(aps[j]->delay(),
-	       aps[j]->snr());
-    if(!stride(idstride,dstride))
-      continue;
+    {
+      std::lock_guard<std::mutex> apslock=aps.lock();
+      std::lock_guard<std::mutex> dflock=df.lock();
+      for(size_t j=0;j<df.size();j++)
+	df[j](aps[j].delay(),aps[j].snr());
+      if(!df.stride()) continue;
+    }
     
     // Run state machines
     {
-      std::lock_guard<std::mutex> lock(m_sm);
+      std::lock<std::mutex> dflock=df.lock();
+      std::lock<std::mutex> smlock=sm.lock();
       for(size_t j=0;j<sm.size();j++)
-	sm[j](df[j]->delay(),
-	      df[j]->snr());
+	sm[j](df[j].delay(),
+	      df[j].snr());
       if(!stride(isstride,sstride))
 	continue;
     }
     
     // Retrieve baseline movements from state machine
+    // no lock because state machine output is not changed by config(c)
     for(size_t j=0;j<sm.size();j++)
       bm[j]=sm[j].movement();
     
@@ -472,90 +494,90 @@ void parse_args(int argc, char *argv[]){
 //   c=nc;
 // }
 
-void update_psa(const std::vector<ai::Phasors<>> &ph,
-		int32_t pversion, int32_t new_pversion,
-		const PowerSpectrumAverageConfig &nc,
-		std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> &psa,
-		PowerSpectrumAverageConfig &c){
-  if(new_pversion!=pversion||nc.avgType!=c.avgType){
-    psa.resize(ph.size());
-    if(nc.avgType==PowerSpectrumAverageConfig::AverageType::Boxcar)
-      for(auto &ipsa: psa)
-	ipsa=std::make_unique<ai::PowerSpectrumBoxcar<>>(nc.tavg);
-    else if(nc.avgType==PowerSpectrumAverageConfig::AverageType::LeakyBox)
-      for(auto &ipsa: psa)
-	ipsa=std::make_unique<ai::PowerSpectrumLeakyBox<>>(nc.tavg);
-    else
-      throw std::invalid_argument("update_pas: nc.avgType="
-				  +std::to_string(static_cast<uint8_t>(nc.avgType))
-				  +". Expected Boxcar=1, LeakyBox=2.");
-  }
-  else if(nc.tavg!=c.tavg)
-    for(auto &ipsa: psa)
-      ipsa->tavg(nc.tavg);
-  c=nc;
-}
+// void update_psa(const std::vector<ai::Phasors<>> &ph,
+// 		int32_t pversion, int32_t new_pversion,
+// 		const PowerSpectrumAverageConfig &nc,
+// 		std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> &psa,
+// 		PowerSpectrumAverageConfig &c){
+//   if(new_pversion!=pversion||nc.avgType!=c.avgType){
+//     psa.resize(ph.size());
+//     if(nc.avgType==PowerSpectrumAverageConfig::AverageType::Boxcar)
+//       for(auto &ipsa: psa)
+// 	ipsa=std::make_unique<ai::PowerSpectrumBoxcar<>>(nc.tavg);
+//     else if(nc.avgType==PowerSpectrumAverageConfig::AverageType::LeakyBox)
+//       for(auto &ipsa: psa)
+// 	ipsa=std::make_unique<ai::PowerSpectrumLeakyBox<>>(nc.tavg);
+//     else
+//       throw std::invalid_argument("update_pas: nc.avgType="
+// 				  +std::to_string(static_cast<uint8_t>(nc.avgType))
+// 				  +". Expected Boxcar=1, LeakyBox=2.");
+//   }
+//   else if(nc.tavg!=c.tavg)
+//     for(auto &ipsa: psa)
+//       ipsa->tavg(nc.tavg);
+//   c=nc;
+// }
 
-void update_pss(const std::vector<ai::Phasors<>> &ph,
-		int32_t pversion, int32_t new_pversion,
-		const PowerSpectrumSmoothingConfig &nc,
-		std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> &pss,
-		PowerSpectrumSmoothingConfig &c){
-  if(new_pversion!=pversion||nc.smoothType!=c.smoothType){
-    pss.resize(ph.size());
-    if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::None)
-      for(auto &ipss: pss)
-	ipss=std::make_unique<ai::PowerSpectrumSmoothNone<>>();
-    else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Boxcar)
-      for(auto &ipss: pss)
-	ipss=std::make_unique<ai::PowerSpectrumSmoothBoxcar<>>(nc.width);
-    else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Gaussian)
-      for(auto &ipss: pss)
-	ipss=std::make_unique<ai::PowerSpectrumSmoothGaussian<>>(nc.width);
-    else
-      throw std::invalid_argument("update_pss: nc.smoothType="
-				  +std::to_string(static_cast<uint8_t>(nc.smoothType))
-				  +". Expected None=0, Boxcar=1, Gaussian=2.");
-  }
-  else if(nc.width!=c.width)
-    for(auto &ipss: pss)
-      ipss->width(nc.width);
-  c=nc;
-}
+// void update_pss(const std::vector<ai::Phasors<>> &ph,
+// 		int32_t pversion, int32_t new_pversion,
+// 		const PowerSpectrumSmoothingConfig &nc,
+// 		std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> &pss,
+// 		PowerSpectrumSmoothingConfig &c){
+//   if(new_pversion!=pversion||nc.smoothType!=c.smoothType){
+//     pss.resize(ph.size());
+//     if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::None)
+//       for(auto &ipss: pss)
+// 	ipss=std::make_unique<ai::PowerSpectrumSmoothNone<>>();
+//     else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Boxcar)
+//       for(auto &ipss: pss)
+// 	ipss=std::make_unique<ai::PowerSpectrumSmoothBoxcar<>>(nc.width);
+//     else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Gaussian)
+//       for(auto &ipss: pss)
+// 	ipss=std::make_unique<ai::PowerSpectrumSmoothGaussian<>>(nc.width);
+//     else
+//       throw std::invalid_argument("update_pss: nc.smoothType="
+// 				  +std::to_string(static_cast<uint8_t>(nc.smoothType))
+// 				  +". Expected None=0, Boxcar=1, Gaussian=2.");
+//   }
+//   else if(nc.width!=c.width)
+//     for(auto &ipss: pss)
+//       ipss->width(nc.width);
+//   c=nc;
+// }
 
-void update_aps(const std::vector<ai::Phasors<>> &ph,
-		int32_t pversion, int32_t new_pversion,
-		const AnalyzePowerSpectrumConfig &nc,
-		std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> &aps,
-		AnalyzePowerSpectrumConfig &c){
-  if(new_pversion!=pversion){
-    aps.resize(ph.size());
-    for(auto &iaps: aps){
-      iaps=std::make_unique<ai::AnalyzePowerSpectrum<>>();
-      iaps->set_peak_width(nc.width);
-    }
-  }
-  else if(nc.width!=c.width)
-    for(auto &iaps: aps)
-      iaps->set_peak_width(nc.width);
-  c=nc;
-}
+// void update_aps(const std::vector<ai::Phasors<>> &ph,
+// 		int32_t pversion, int32_t new_pversion,
+// 		const AnalyzePowerSpectrumConfig &nc,
+// 		std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> &aps,
+// 		AnalyzePowerSpectrumConfig &c){
+//   if(new_pversion!=pversion){
+//     aps.resize(ph.size());
+//     for(auto &iaps: aps){
+//       iaps=std::make_unique<ai::AnalyzePowerSpectrum<>>();
+//       iaps->set_peak_width(nc.width);
+//     }
+//   }
+//   else if(nc.width!=c.width)
+//     for(auto &iaps: aps)
+//       iaps->set_peak_width(nc.width);
+//   c=nc;
+// }
 
-void update_df(){
+// void update_df(){
 
-}
+// }
 
-void update_sm(){
+// void update_sm(){
 
-}
+// }
 
-void update_o(){
+// void update_o(){
 
-}
+// }
 
-void update_all(){
+// void update_all(){
 
-}
+// }
 
 // Compute frame rate
 void *sample_tracker_stats(void *dummy){
@@ -663,20 +685,26 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
 	psa.config(c);
       }
       case '5':{
-	PowerSpectrumSmoothConfig c;
+	PowerSpectrumSmoothingConfig c;
 	c.read(q.read(c.size()));
-	// pss.config(c)
+	pss.config(c);
       }
-      case '6':
-	new_aps_c.read(q.read(new_aps_c.size()));
-	// call update in mutex lock
-      case '7':
-	new_df_c.read(q.read(new_df_c.size()));
-	// call update in mutex lock
-      case '8':
-	new_sm_c.read1(q.read(new_sm_c.size1()));
-	new_sm_c.read2(q.read(new_sm_c.size2()));
-	// call update in mutex lock
+      case '6':{
+	AnalyzePowerSpectrumConfig c;
+	c.read(q.read(c.size()));
+	aps.config(c);
+      }
+      case '7':{
+	DelayFilterConfig c;
+	c.read(q.read(c.size()));
+	df.config(c);
+      }
+      case '8':{
+	StateMachinesConfig c;
+	c.read1(q.read(c.size1()));
+	c.read2(q.read(c.size2()));
+	sm.config(c);
+      }
       case '9':
 	new_o_c.read(q.read(new_o_c.size()));
 	// call update in mutex lock
