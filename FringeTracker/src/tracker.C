@@ -58,7 +58,6 @@ help({
     /* ======================================================================*/
   });
 
-//#include "../include/DelayMachine.H"
 #include "../include/StateMachine.H"
 #include "../include/Baseline2DelaylineLinear.H"
 #include "../include/DelayFilter.H"
@@ -105,10 +104,12 @@ bool active=false;
 namespace ai=amjInterferometry;
 
 // phasors version
-int32_t pversion=-1;
+static int32_t pversion=-1;
+static std::mutex m_pversion;
 
 // Computation loop objects
-std::vector<ai::Phasors<float> > ph;
+static std::vector<ai::Phasors<float> > ph;
+static std::mutex m_ph;
 static PhasorsAverage pha;
 static CalcPowerSpectrum cps;
 static std::vector<ai::PowerSpectrum<>> ps;
@@ -117,35 +118,9 @@ static PowerSpectrumSmooth pss;
 static AnalyzePowerSpectrum aps;
 static DelayFilters df;
 static StateMachines sm;
-
-static Baseline2DelaylineLinear baseline2delayline({0,1});
-
-//std::vector<std::unique_ptr<ai::PhasorsAverage<>>> pha;
-//std::vector<std::unique_ptr<ai::CalcPowerSpectrum<>>> cps;
-//std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> psa;
-//std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> pss;
-//std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> aps;
-//std::vector<std::unique_ptr<DelayFilter<>>> df;
-//std::vector<FringeTrackerStateMachine> sm;
 std::vector<float> bm; // baseline movement
+static Baseline2DelaylineLinear baseline2delayline({0,1});
 std::vector<float> dm; // delayline movement
-
-// Configuration objects
-// PhasorsAverageConfig pha_c,new_pha_c;
-// CalcPowerSpectrumConfig cps_c,new_cps_c;
-// PowerSpectrumAverageConfig psa_c,new_psa_c;
-// PowerSpectrumSmoothingConfig pss_c,new_pss_c;
-// AnalyzePowerSpectrumConfig aps_c,new_aps_c;
-// DelayFilterConfig df_c,new_df_c;
-// StateMachineConfig sm_c,new_sm_c;
-// OutputConfig o_c,new_o_c;
-
-std::mutex m_conf; // lock for reconfiguration. Other thread cannot
-		   // reconfigure while main is running, main cannot
-		   // run when other thread is reconfiguring
-std::mutex m_sm; // Lock for state machine. Other thread cannot read
-		 // state machine while it is running
-
 
 // Stride function. If it returns true the caller should proceed
 // forward. If it returns false the called should return to the start
@@ -174,10 +149,6 @@ void sigterm_callback(int s){
 }
 
 
-
-
-//Baseline2DelaylineLinear baseline2delayline(3,nDelaylines);
-
 // TCP server
 std::string server_address=":27014";
 std::vector<amjCom::Session> server_sessions;
@@ -189,7 +160,7 @@ void server_session_status(amjCom::Session,amjCom::Status);
 // Continuously running counter
 uint64_t frame_counter=0;
 uint32_t frame_rate=0;
-std::mutex mutex_frame_counter;
+std::mutex m_frame_counter;
 
 // Run state
 enum class RunState: uint8_t{Running=1,Stopped=2};
@@ -256,8 +227,8 @@ int main(int argc, char *argv[]){
     uint32_t nphasors;
     
     // Load phasors from incoming packet
-    { // Protected from configuration changes
-      std::lock_guard<std::mutex> lock(m_conf);
+    {
+      std::lock_guard<std::mutex> lock(m_ph);
       memcpy(&new_pversion,packet.read(sizeof(int32_t)),sizeof(int32_t));
       memcpy(&nphasors,packet.read(sizeof(uint32_t)),sizeof(uint32_t));
       ph.resize(nphasors);
@@ -265,24 +236,25 @@ int main(int argc, char *argv[]){
 	ph[j].read1(packet.read(ph[j].memsize1()));
 	ph[j].read2(packet.read(ph[j].memsize2()));
       }
-      if(new_pversion!=pversion){
-	pha.config(ph);
-	cps.config(ph);
-	{
-	  std::lock_guard<std::mutex> lock=cps.lock();
-	  ps.resize(ph.size()); // cps lock when writing to ps
-	}
-	psa.config(ph.size());
-	pss.config(ph.size());
-	aps.config(ph.size());
-	df.config(ph.size());
-	sm.config(ph.size());
-	bm.resize(ph.size());
-	dm.resize(ph.size()+1); // We need a configuration # delaylines
-	
-	// and all the others
-	pversion=new_pversion;
+    }
+    if(new_pversion!=pversion){
+      std::lock_guard<std::mutex> lock(m_pversion);
+      pha.config(ph);
+      cps.config(ph);
+      {
+	std::lock_guard<std::mutex> lock=cps.lock();
+	ps.resize(ph.size()); // cps lock when writing to ps
       }
+      psa.config(ph.size());
+      pss.config(ph.size());
+      aps.config(ph.size());
+      df.config(ph.size());
+      sm.config(ph);
+      bm.resize(ph.size());
+      dm.resize(ph.size()+1); // We need a configuration # delaylines
+      
+      // and all the others
+      pversion=new_pversion;
     }
     
     // Print frame count
@@ -297,7 +269,6 @@ int main(int argc, char *argv[]){
       if(!pha.stride())
 	continue;
     }
-
     
     // Calculate power spectra
     {
@@ -341,8 +312,8 @@ int main(int argc, char *argv[]){
     
     // Run state machines
     {
-      std::lock<std::mutex> dflock=df.lock();
-      std::lock<std::mutex> smlock=sm.lock();
+      std::lock_guard<std::mutex> dflock=df.lock();
+      std::lock_guard<std::mutex> smlock=sm.lock();
       for(size_t j=0;j<sm.size();j++)
 	sm[j](df[j].delay(),
 	      df[j].snr());
@@ -387,7 +358,7 @@ int main(int argc, char *argv[]){
 	fplog.write((char *)&dm[i],sizeof(float));
     } 
 
-    std::lock_guard<std::mutex> lock(mutex_frame_counter);
+    std::lock_guard<std::mutex> lock(m_frame_counter);
     frame_counter++;
   }    
     
@@ -438,157 +409,17 @@ void parse_args(int argc, char *argv[]){
   }
 }
 
-// void update_pha(const std::vector<ai::Phasors<>> &ph,
-// 		int32_t pversion, int32_t new_pversion,
-// 		const PhasorsAverageConfig &nc,
-// 		std::vector<std::unique_ptr<ai::PhasorsAverage<>>> &pha,
-// 		PhasorsAverageConfig &c,
-// 		int32_t &stride){
-//   // Cheaper to always update stride than to check if it changed
-//   stride=nc.stride;
-  
-//   // If geometry (pversion) or average type changed rebuild
-//   if(new_pversion!=pversion||nc.avgType!=c.avgType){
-//     pha.resize(ph.size());
-//     for(size_t i=0;i<pha.size();i++){
-//       std::string name=pha[i]->name();
-//       if(nc.avgType==PhasorsAverageConfig::AverageType::Boxcar)
-// 	pha[i]=std::make_unique<ai::PhasorsBoxcar<>>(ph[i],nc.tavg);
-//       else if(nc.avgType==PhasorsAverageConfig::AverageType::LeakyBox)
-// 	pha[i]=std::make_unique<ai::PhasorsLeakyBox<>>(ph[i],nc.tavg);
-//       else
-// 	throw std::invalid_argument("update_pha: nc.avgType="
-// 				    +std::to_string(static_cast<uint8_t>(nc.avgType))
-// 				    +". Expected Boxcar=1 or LeakyBox=2");
-//       pha[i]->name(name);
-//     }
-//   }
-//   else if(nc.tavg!=c.tavg)
-//     for(auto &ipha: pha)
-//       ipha->tavg(nc.tavg);
-//   c=nc;
-// }
-
-// void update_cps(const std::vector<ai::Phasors<>> &ph,
-// 		const CalcPowerSpectrumConfig &nc,
-// 		std::vector<std::unique_ptr<ai::CalcPowerSpectrum<>>> &cps,
-// 		std::vector<ai::PowerSpectrum<>> &ps,
-// 		CalcPowerSpectrumConfig &c){
-//   cps.clear();
-//   ps.clear();
-//   for(size_t i=0;i<ph.size();i++)
-//     if(nc.calcType==CalcPowerSpectrumConfig::CalcType::FFT)
-//       cps.push_back(std::make_unique<ai::CalcPowerSpectrumFFT<>>());
-//     else if(nc.calcType==CalcPowerSpectrumConfig::CalcType::DFT){
-//       cps.push_back(std::make_unique<ai::CalcPowerSpectrumDFT<>>());
-//       size_t n=(nc.dftMax-nc.dftMin)/nc.dftStep;
-//       std::vector<float> delays;
-//       for(size_t i=0;i<n;i++)
-// 	delays[i]=nc.dftMin+nc.dftStep*i;
-//     }
-//     else
-//       throw std::invalid_argument("update_cps: nc.calcType="
-// 				  +std::to_string(static_cast<uint8_t>(nc.calcType))
-// 				  +". Expected FFT=1 or DFT=2.");
-//   ps.resize(ph.size());
-//   c=nc;
-// }
-
-// void update_psa(const std::vector<ai::Phasors<>> &ph,
-// 		int32_t pversion, int32_t new_pversion,
-// 		const PowerSpectrumAverageConfig &nc,
-// 		std::vector<std::unique_ptr<ai::PowerSpectrumAverage<>>> &psa,
-// 		PowerSpectrumAverageConfig &c){
-//   if(new_pversion!=pversion||nc.avgType!=c.avgType){
-//     psa.resize(ph.size());
-//     if(nc.avgType==PowerSpectrumAverageConfig::AverageType::Boxcar)
-//       for(auto &ipsa: psa)
-// 	ipsa=std::make_unique<ai::PowerSpectrumBoxcar<>>(nc.tavg);
-//     else if(nc.avgType==PowerSpectrumAverageConfig::AverageType::LeakyBox)
-//       for(auto &ipsa: psa)
-// 	ipsa=std::make_unique<ai::PowerSpectrumLeakyBox<>>(nc.tavg);
-//     else
-//       throw std::invalid_argument("update_pas: nc.avgType="
-// 				  +std::to_string(static_cast<uint8_t>(nc.avgType))
-// 				  +". Expected Boxcar=1, LeakyBox=2.");
-//   }
-//   else if(nc.tavg!=c.tavg)
-//     for(auto &ipsa: psa)
-//       ipsa->tavg(nc.tavg);
-//   c=nc;
-// }
-
-// void update_pss(const std::vector<ai::Phasors<>> &ph,
-// 		int32_t pversion, int32_t new_pversion,
-// 		const PowerSpectrumSmoothingConfig &nc,
-// 		std::vector<std::unique_ptr<ai::PowerSpectrumSmooth<>>> &pss,
-// 		PowerSpectrumSmoothingConfig &c){
-//   if(new_pversion!=pversion||nc.smoothType!=c.smoothType){
-//     pss.resize(ph.size());
-//     if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::None)
-//       for(auto &ipss: pss)
-// 	ipss=std::make_unique<ai::PowerSpectrumSmoothNone<>>();
-//     else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Boxcar)
-//       for(auto &ipss: pss)
-// 	ipss=std::make_unique<ai::PowerSpectrumSmoothBoxcar<>>(nc.width);
-//     else if(nc.smoothType==PowerSpectrumSmoothingConfig::SmoothingType::Gaussian)
-//       for(auto &ipss: pss)
-// 	ipss=std::make_unique<ai::PowerSpectrumSmoothGaussian<>>(nc.width);
-//     else
-//       throw std::invalid_argument("update_pss: nc.smoothType="
-// 				  +std::to_string(static_cast<uint8_t>(nc.smoothType))
-// 				  +". Expected None=0, Boxcar=1, Gaussian=2.");
-//   }
-//   else if(nc.width!=c.width)
-//     for(auto &ipss: pss)
-//       ipss->width(nc.width);
-//   c=nc;
-// }
-
-// void update_aps(const std::vector<ai::Phasors<>> &ph,
-// 		int32_t pversion, int32_t new_pversion,
-// 		const AnalyzePowerSpectrumConfig &nc,
-// 		std::vector<std::unique_ptr<ai::AnalyzePowerSpectrum<>>> &aps,
-// 		AnalyzePowerSpectrumConfig &c){
-//   if(new_pversion!=pversion){
-//     aps.resize(ph.size());
-//     for(auto &iaps: aps){
-//       iaps=std::make_unique<ai::AnalyzePowerSpectrum<>>();
-//       iaps->set_peak_width(nc.width);
-//     }
-//   }
-//   else if(nc.width!=c.width)
-//     for(auto &iaps: aps)
-//       iaps->set_peak_width(nc.width);
-//   c=nc;
-// }
-
-// void update_df(){
-
-// }
-
-// void update_sm(){
-
-// }
-
-// void update_o(){
-
-// }
-
-// void update_all(){
-
-// }
 
 // Compute frame rate
 void *sample_tracker_stats(void *dummy){
   uint64_t old_frame_counter;
   {
-    std::lock_guard<std::mutex> lock(mutex_frame_counter);
+    std::lock_guard<std::mutex> lock(m_frame_counter);
     old_frame_counter=frame_counter;
   }
   for(;;){
     {
-      std::lock_guard<std::mutex> lock(mutex_frame_counter);
+      std::lock_guard<std::mutex> lock(m_frame_counter);
       frame_rate=(uint32_t)(frame_counter-old_frame_counter);
       old_frame_counter=frame_counter;
     }
@@ -598,8 +429,11 @@ void *sample_tracker_stats(void *dummy){
 
 // Compute state machine statistics
 void *statemachine_statistics(void *dummy){
-  std::lock_guard<std::mutex> lock(m_sm);
-  
+  for(;;){
+    std::lock_guard<std::mutex> lock=sm.lock();
+
+    //sleep 10 ms
+  }
   return nullptr;
 }
 
@@ -632,8 +466,9 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
   if(c=='G'){
     int32_t version;
     read(p,version);
+    // first verify FringeTrackerGUI has the right version
     {
-      std::lock_guard<std::mutex> lock(m_conf);
+      std::lock_guard<std::mutex> lock(m_pversion);
       if(version!=pversion){
 	c='B';
 	write(q,c);
@@ -646,7 +481,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
 	return;
       }
     }
-    std::lock_guard<std::mutex> lock(m_conf); // should only be at individual configs
+    // Read configuration packets until end
     uint8_t cc;
     read(p,cc);
     while(cc!='\0'){
@@ -705,9 +540,11 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
 	c.read2(q.read(c.size2()));
 	sm.config(c);
       }
-      case '9':
-	new_o_c.read(q.read(new_o_c.size()));
+      case '9':{
+	OutputConfig c;
+	c.read(q.read(c.size()));
 	// call update in mutex lock
+      }
       default:
 	throw std::runtime_error(std::format("FringeTracker::server_session_receive:"
 					     " unknown section: {} ({:#x}).",c,
@@ -715,11 +552,12 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
       }
       read(p,cc);
     }
-    // respond with update
+    // respond with update packet
     c='U';
+    q.clear();
     write(q,c);
     {
-      std::lock_guard<std::mutex> lock(m_conf);
+      std::lock_guard<std::mutex> lock(m_ph);
       if(ph.size()>0)
 	ph[0].time().write(q.write(ph[0].time().size()));
       else{
@@ -728,7 +566,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
       }
     }
     {
-      std::lock_guard<std::mutex> lock(mutex_frame_counter);
+      std::lock_guard<std::mutex> lock(m_frame_counter);
       memcpy(q.write(sizeof(uint32_t)),&frame_rate,sizeof(uint32_t));      
     }
     s->send(q);
