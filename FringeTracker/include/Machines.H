@@ -13,6 +13,37 @@
 namespace ai=amjInterferometry;
 #include "../../protocol/include/FringeTrackerProtocol.H"
 
+/*=============================================================================
+  This file contains wrapper classes for the processing objects in the
+  main loop of FringeTracker. The wrapper looks like a vector of
+  processing objects and are accessed by the [] operator to the
+  object. The object can be reconfigured in response to a change of
+  the baseline configurations, or in response to commands from the
+  GUI. They can also be accessed when collecting statistics or when
+  collecting data to send to another program. These accesses can
+  happen from different threads. Only one thread should access the
+  objects at any given time, so they contain mutexes. There are
+  several config methods, and they set the internal mutex as the first
+  action when called. Thus, calling config methods automatically locks
+  the objects. When accessing the object during main loop processing
+  or when collecting data, the objects must be explicitly locked using
+  a lock_guard. For an object X, the code looks like this:
+
+  { // Access the object inside a locking code block surrounded by {}
+    std::lock_guard<std::mutex> X.lock();
+    // access the object, for example loop and access method y
+    for(auto &x:X)
+      x.y();
+    // or with a numeric for loop
+    for(size_t i=0;i<X.size();i++)
+      x[i].y();
+  } // The lock is automatically released when the block exits
+
+  Important: if multiple objects are accessed and must be locked at
+  the same time, lock them in the same order everywhere - for example
+  the order in which they appear in the main loop.
+  ===========================================================================+*/
+
 //
 // PhasorsAverage
 //
@@ -65,6 +96,8 @@ template<typename T>
 std::unique_ptr<ai::PhasorsAverage<T>> PhasorsAverage<T>::make
 (const ai::Phasors<T>& p,const PhasorsAverageConfig& cfg){
   switch(cfg.avgType){
+  case PhasorsAverageConfig::AverageType::None:
+    return std::make_unique<ai::PhasorsAverageNone<T>>(p);
   case PhasorsAverageConfig::AverageType::Boxcar:
     return std::make_unique<ai::PhasorsBoxcar<T>>(p,cfg.tavg);
   case PhasorsAverageConfig::AverageType::LeakyBox:
