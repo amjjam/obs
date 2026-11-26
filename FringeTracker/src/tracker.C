@@ -122,17 +122,6 @@ static std::vector<float> bm; // baseline movement
 static Baseline2Delayline2Output b2d2o;
 static std::vector<float> dm; // delayline movement
 
-// Stride function. If it returns true the caller should proceed
-// forward. If it returns false the called should return to the start
-// of the loop by calling continue
-// inline bool stride(int32_t &istride, int32_t nstride){
-//   if(++istride<nstride)
-//     return false;
-//   istride=0;
-//   return true;
-// }
-
-
 // For state machine sampling and reporting
 std::vector<std::string> baselinenames;
 std::vector<std::string> statenames;
