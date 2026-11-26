@@ -59,7 +59,7 @@ help({
   });
 
 #include "../include/StateMachine.H"
-#include "../include/Baseline2DelaylineLinear.H"
+#include "../include/Baseline2Delayline2Output.H"
 #include "../include/DelayFilter.H"
 
 #include "../../shared/include/Timing.H"
@@ -118,19 +118,19 @@ static PowerSpectrumSmooth pss;
 static AnalyzePowerSpectrum aps;
 static DelayFilters df;
 static StateMachines sm;
-std::vector<float> bm; // baseline movement
-static Baseline2DelaylineLinear baseline2delayline({0,1});
-std::vector<float> dm; // delayline movement
+static std::vector<float> bm; // baseline movement
+static Baseline2Delayline2Output b2d2o;
+static std::vector<float> dm; // delayline movement
 
 // Stride function. If it returns true the caller should proceed
 // forward. If it returns false the called should return to the start
 // of the loop by calling continue
-inline bool stride(int32_t &istride, int32_t nstride){
-  if(++istride<nstride)
-    return false;
-  istride=0;
-  return true;
-}
+// inline bool stride(int32_t &istride, int32_t nstride){
+//   if(++istride<nstride)
+//     return false;
+//   istride=0;
+//   return true;
+// }
 
 
 // For state machine sampling and reporting
@@ -211,8 +211,6 @@ int main(int argc, char *argv[]){
   // For cleanly closing the log file on SIGTERM
   signal(SIGTERM,&sigterm_callback);
   
-  int32_t isstride=0,sstride=1;
-  int32_t iostride=0,ostride=1;
   while(true){
     packet.clear();
     r.receive(packet);
@@ -252,8 +250,9 @@ int main(int argc, char *argv[]){
       sm.config(ph);
       bm.resize(ph.size());
       dm.resize(ph.size()+1); // We need a configuration # delaylines
-      
-      // and all the others
+      // Configure baseline geometry - hard-coded for the time being
+      b2d2o.config(Baseline2DelaylineLinearConfig{pversion,{0,1}});
+
       pversion=new_pversion;
     }
     
@@ -317,7 +316,8 @@ int main(int argc, char *argv[]){
       for(size_t j=0;j<sm.size();j++)
 	sm[j](df[j].delay(),
 	      df[j].snr());
-      if(!stride(isstride,sstride))
+
+      if(sm.stride())
 	continue;
     }
     
@@ -327,10 +327,8 @@ int main(int argc, char *argv[]){
       bm[j]=sm[j].movement();
     
     // Calculate delayline movements from baseline movements
-    baseline2delayline(bm,dm);
-    
-    if(!stride(iostride,ostride))
-      continue;
+    if(!b2d2o(bm,dm,pversion)) // mutex held in operator() call    
+      continue; 
     
     // Send delay line movements to delay line controller
     //Delays<float> delaylinemovements=baseline2delayline.delaylineMovements();
@@ -485,7 +483,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
     uint8_t cc;
     read(p,cc);
     while(cc!='\0'){
-      switch(c){
+      switch(cc){
       case '1':
 	uint8_t command;
 	read(p,command);
@@ -543,7 +541,7 @@ void server_session_receive(amjCom::Session s, amjCom::Packet &p){
       case '9':{
 	OutputConfig c;
 	c.read(q.read(c.size()));
-	// call update in mutex lock
+	b2d2o.config(c);
       }
       default:
 	throw std::runtime_error(std::format("FringeTracker::server_session_receive:"
